@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 from geoalchemy2 import Geography
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -31,6 +32,14 @@ class IssueCluster(Base):
     )
     is_hotspot: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
+    )
+    # Running weighted average of member ticket severity scores
+    aggregate_severity_score: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, server_default="0"
+    )
+    # JSON-serialised float list (384-dim MiniLM vector) of the representative ticket
+    representative_embedding: Mapped[Optional[Any]] = mapped_column(
+        JSONB, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

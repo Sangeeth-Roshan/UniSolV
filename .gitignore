@@ -1,4 +1,6 @@
-# ── Python ──────────────────────────────────────────────────────────────────
+# ==================================
+# Python / Backend
+# ==================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -11,45 +13,96 @@ build/
 .eggs/
 *.egg-link
 pip-wheel-metadata/
+
+# Virtual Environments
 .venv/
 venv/
 env/
 ENV/
 
-# ── FastAPI / Alembic ───────────────────────────────────────────────────────
-backend/.env
-backend/alembic/versions/*.py
+# Pytest & Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.test.db
 
-# ── Node / Next.js ──────────────────────────────────────────────────────────
+# FastAPI / Web / Media
+backend/uploads/
+backend/data/
+*.db
+*.sqlite3
+*.pkl
+backend/ffmpeg.zip
+backend/ffmpeg_fast.zip
+backend/ffmpeg.exe
+
+# Alembic
+# Note: DO NOT ignore alembic/versions/*.py as migrations should be tracked
+# Only ignore local SQLite if used
+backend/alembic.ini.bak
+
+# Machine Learning / Jupyter
+*.ipynb
+.ipynb_checkpoints
+huggingface/
+.cache/
+
+# ==================================
+# Node.js / Frontend
+# ==================================
 node_modules/
-frontend/.next/
-frontend/out/
-frontend/.env.local
-frontend/.env.development.local
-frontend/.env.test.local
-frontend/.env.production.local
+frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# ── Docker ──────────────────────────────────────────────────────────────────
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+.next/
+out/
+build/
+
+# Next.js Cache
+.tsbuildinfo
+*.tsbuildinfo
+
+# ==================================
+# Environments & Secrets
+# ==================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
 infra/.env
+*.pem
+*.key
+*.cert
 
-# ── IDEs ────────────────────────────────────────────────────────────────────
+# ==================================
+# OS / IDE / Editor
+# ==================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 .idea/
 .vscode/
 *.swp
 *.swo
-.DS_Store
-Thumbs.db
-
-# ── Coverage / Testing ──────────────────────────────────────────────────────
-.coverage
-htmlcov/
-.pytest_cache/
-*.test.db
-
-# ── Misc ────────────────────────────────────────────────────────────────────
-*.log
-*.bak
-.env
+*.sublime-workspace
+*.sublime-project
+.directory

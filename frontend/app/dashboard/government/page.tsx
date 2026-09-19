@@ -1,68 +1,70 @@
-import type { Metadata } from "next";
+import { cookies } from 'next/headers'
 
-export const metadata: Metadata = {
-  title: "Government Overview",
-  description: "City-wide civic issue analytics, escalations, and reporting.",
-};
+async function getTickets() {
+  const token = cookies().get('token')?.value
+  if (!token) return []
+  const res = await fetch('http://localhost:8000/api/tickets', {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store'
+  })
+  if (!res.ok) return []
+  return res.json()
+}
 
-const REGIONS = [
-  { name: "North District", open: "—", escalated: "—", resolved: "—" },
-  { name: "South District", open: "—", escalated: "—", resolved: "—" },
-  { name: "East District", open: "—", escalated: "—", resolved: "—" },
-  { name: "West District", open: "—", escalated: "—", resolved: "—" },
-];
+export default async function GovernmentDashboardPage() {
+  const tickets = await getTickets()
 
-export default function GovernmentDashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="page-title">Government Overview</h1>
-        <p className="page-subtitle">
-          City-wide analytics, escalations, and departmental performance.
-        </p>
+        <h1 className="page-title text-2xl font-bold">Government Dashboard</h1>
       </div>
+      
+      <div className="flex flex-col gap-4">
+        {tickets.map((ticket: any) => (
+          <div key={ticket.id} className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold text-lg">{ticket.title}</h3>
+                <p className="text-sm text-slate-600">{ticket.description}</p>
+                <div className="mt-2 text-xs font-mono text-slate-400">Domain: {ticket.domain}</div>
+              </div>
+              <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">{ticket.status}</span>
+            </div>
 
-      {/* Map placeholder */}
-      <div className="glass-card mb-6 flex items-center justify-center h-64">
-        <div className="text-center">
-          <span className="text-4xl block mb-3">🗺️</span>
-          <p className="text-slate-500 text-sm">
-            Interactive PostGIS map — coming soon
-          </p>
-        </div>
-      </div>
+            {/* Actions for Government */}
+            <div className="flex gap-2 mt-4">
+               <form action={async () => {
+                  'use server'
+                  const t = cookies().get('token')?.value
+                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/dispatch`, { method: 'POST', headers: { Authorization: `Bearer ${t}` }})
+               }}>
+                 <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Dispatch / Route</button>
+               </form>
+               <form action={async () => {
+                  'use server'
+                  const t = cookies().get('token')?.value
+                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/close`, { method: 'POST', headers: { Authorization: `Bearer ${t}` }})
+               }}>
+                 <button className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Close Ticket</button>
+               </form>
+            </div>
 
-      {/* Regional breakdown */}
-      <div className="glass-card p-6">
-        <h2 className="text-base font-semibold text-white mb-5">
-          Regional Breakdown
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500 border-b border-white/5">
-                <th className="pb-3 pr-6 font-medium">Region</th>
-                <th className="pb-3 pr-6 font-medium">Open</th>
-                <th className="pb-3 pr-6 font-medium">Escalated</th>
-                <th className="pb-3 font-medium">Resolved</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {REGIONS.map((r) => (
-                <tr key={r.name} className="text-slate-300">
-                  <td className="py-3 pr-6 font-medium">{r.name}</td>
-                  <td className="py-3 pr-6 text-indigo-400">{r.open}</td>
-                  <td className="py-3 pr-6 text-amber-400">{r.escalated}</td>
-                  <td className="py-3 text-emerald-400">{r.resolved}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 text-xs text-slate-600">
-          Scaffold placeholder — data not yet connected.
-        </p>
+            {/* Timeline */}
+            <div className="mt-6 border-t pt-4">
+              <h4 className="text-sm font-semibold mb-2">History</h4>
+              <ul className="text-xs text-slate-500 flex flex-col gap-1">
+                {ticket.events.map((event: any, i: number) => (
+                  <li key={i}>
+                    <span className="font-bold">{event.type}</span> at {new Date(event.time).toLocaleString()}: {event.notes}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+        {tickets.length === 0 && <div className="text-slate-500">No tickets found.</div>}
       </div>
     </div>
-  );
+  )
 }

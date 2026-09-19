@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 
 async function getTickets() {
   const token = cookies().get('token')?.value
@@ -12,13 +11,13 @@ async function getTickets() {
   return res.json()
 }
 
-export default async function InstitutionDashboardPage() {
+export default async function MyTicketsPage() {
   const tickets = await getTickets()
 
   return (
-    <div>
+    <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="page-title text-2xl font-bold">Institution Dashboard</h1>
+        <h1 className="text-3xl font-bold">My Tickets</h1>
       </div>
       
       <div className="flex flex-col gap-4">
@@ -30,25 +29,7 @@ export default async function InstitutionDashboardPage() {
                 <p className="text-sm text-slate-600">{ticket.description}</p>
                 <div className="mt-2 text-xs font-mono text-slate-400">Domain: {ticket.domain}</div>
               </div>
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">{ticket.status}</span>
-            </div>
-
-            {/* Actions for Institution */}
-            <div className="flex gap-2 mt-4">
-               <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/accept`, { method: 'POST', headers: { Authorization: `Bearer ${t}` }})
-               }}>
-                 <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Accept</button>
-               </form>
-               <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/proposal`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ industry_partner_id: null })})
-               }}>
-                 <button className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">Submit Proposal</button>
-               </form>
+              <span className="px-2 py-1 bg-slate-100 text-slate-800 rounded text-xs font-semibold">{ticket.status}</span>
             </div>
 
             {/* Timeline */}
@@ -64,7 +45,7 @@ export default async function InstitutionDashboardPage() {
             </div>
           </div>
         ))}
-        {tickets.length === 0 && <div className="text-slate-500">No tickets found.</div>}
+        {tickets.length === 0 && <div className="text-slate-500">You haven't submitted any tickets yet.</div>}
       </div>
     </div>
   )

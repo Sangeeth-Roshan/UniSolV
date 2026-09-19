@@ -38,6 +38,8 @@ class EventType(str, enum.Enum):
     piloted = "piloted"
     verified = "verified"
     closed = "closed"
+    hotspot_detected = "hotspot_detected"
+    cluster_merged = "cluster_merged"
 
 
 class IPOutcome(str, enum.Enum):
