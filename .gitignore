@@ -1,0 +1,55 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg-link
+pip-wheel-metadata/
+.venv/
+venv/
+env/
+ENV/
+
+# ── FastAPI / Alembic ───────────────────────────────────────────────────────
+backend/.env
+backend/alembic/versions/*.py
+
+# ── Node / Next.js ──────────────────────────────────────────────────────────
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Docker ──────────────────────────────────────────────────────────────────
+infra/.env
+
+# ── IDEs ────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Coverage / Testing ──────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+*.test.db
+
+# ── Misc ────────────────────────────────────────────────────────────────────
+*.log
+*.bak
+.env
