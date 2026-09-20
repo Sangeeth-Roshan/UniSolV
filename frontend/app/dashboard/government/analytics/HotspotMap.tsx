@@ -1,21 +1,19 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-// Fix for default marker icons in Next.js + Leaflet
-// Leaflet uses relative paths for images, which breaks in Webpack
-const icon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+interface Hotspot {
+  id: number;
+  domain: string;
+  member_count: number;
+  severity: number;
+  lat: number;
+  lon: number;
+}
 
-export default function HotspotMap({ hotspots }: { hotspots: any[] }) {
+export default function HotspotMap({ hotspots }: { hotspots: Hotspot[] }) {
   // Use a default center if no hotspots
   const defaultCenter: [number, number] = [23.0, 85.0]; // Roughly central India based on dataset
   const [mounted, setMounted] = useState(false);

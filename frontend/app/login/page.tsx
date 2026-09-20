@@ -31,11 +31,11 @@ export default function LoginPage() {
         {error && <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{error}</div>}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700">Email</label>
-          <input name="email" type="email" required className="border p-2 rounded-md" defaultValue="test@example.com"/>
+          <input name="email" type="email" required className="border p-2 rounded-md" placeholder="you@example.com" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700">Password</label>
-          <input name="password" type="password" required className="border p-2 rounded-md" defaultValue="fake"/>
+          <input name="password" type="password" required className="border p-2 rounded-md" placeholder="••••••••" />
         </div>
         <button type="submit" disabled={loading} className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
           {loading ? 'Logging in...' : 'Login'}

@@ -2,21 +2,33 @@
 
 import React, { useState, useRef } from "react";
 
+
+// ── Submit result type (matches backend response) ─────────────────────────────
+interface SubmitResult {
+  ticket_id: number;
+  domain: string;
+  cluster_id: number | null;
+  needs_human_review: boolean;
+  transcription: string;
+}
+
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [consent, setConsent] = useState(false);
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
-  
+
   // Audio state
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  
+
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -29,12 +41,12 @@ export default function SubmitPage() {
           setLat(position.coords.latitude.toString());
           setLng(position.coords.longitude.toString());
         },
-        (error) => {
-          alert("Could not get location. Please enter manually.");
+        () => {
+          setSubmitError("Could not get location. Please enter coordinates manually.");
         }
       );
     } else {
-      alert("Geolocation is not supported by your browser.");
+      setSubmitError("Geolocation is not supported by your browser.");
     }
   };
 
@@ -46,16 +58,14 @@ export default function SubmitPage() {
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start();
@@ -64,9 +74,8 @@ export default function SubmitPage() {
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
-    } catch (err) {
-      console.error("Error accessing microphone:", err);
-      alert("Microphone access denied or unavailable.");
+    } catch {
+      setSubmitError("Microphone access denied or unavailable.");
     }
   };
 
@@ -84,154 +93,273 @@ export default function SubmitPage() {
     return `${m}:${s}`;
   };
 
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setConsent(false);
+    setLat("");
+    setLng("");
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setMediaFile(null);
+    setSubmitError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consent) {
-      alert("Please grant public-good licensing consent.");
+      setSubmitError("Please grant public-good licensing consent before submitting.");
       return;
     }
-    
+
     setSubmitting(true);
-    
+    setSubmitError(null);
+    setSubmitResult(null);
+
     const formData = new FormData();
-    formData.append("reporter_id", "1"); // Assuming logged-in user 1 for now
+    // NOTE: reporter_id is derived server-side from the JWT — do NOT send it.
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("public_good_consent", consent ? "true" : "false");
-    
+    formData.append("public_good_consent", "true");
+
     if (lat && lng) {
       formData.append("lat", lat);
       formData.append("lng", lng);
     }
-    
     if (audioBlob) {
       formData.append("audio", audioBlob, "recording.webm");
     }
     if (mediaFile) {
       formData.append("media", mediaFile);
     }
-    
+
     try {
-      const res = await fetch("http://localhost:8000/api/tickets", {
+      // Route through our own Next.js API proxy so the HttpOnly auth cookie is
+      // attached automatically (client-side fetch cannot read HttpOnly cookies).
+      const res = await fetch("/api/proxy/tickets", {
         method: "POST",
         body: formData,
       });
+
       if (res.ok) {
-        alert("Ticket submitted successfully!");
-        setTitle("");
-        setDescription("");
-        setConsent(false);
-        setLat("");
-        setLng("");
-        setAudioBlob(null);
-        setAudioUrl(null);
-        setMediaFile(null);
+        const data: SubmitResult = await res.json();
+        setSubmitResult(data);
+        resetForm();
       } else {
-        const text = await res.text();
-        alert("Error submitting: " + text);
+        const body = await res.json().catch(() => ({ detail: res.statusText }));
+        setSubmitError(body.detail ?? "Failed to submit ticket. Please try again.");
       }
     } catch (err) {
-      alert("Error: " + err);
+      setSubmitError("Network error: " + String(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
+    <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Report an Issue</h1>
-        <p className="text-gray-600">
-          Describe the civic issue you've encountered. Our platform will classify and route it to the right department.
+        <h1 className="page-title">Report an Issue</h1>
+        <p className="page-subtitle">
+          Describe the civic issue you&apos;ve encountered. Our platform will classify
+          and route it to the right department automatically.
         </p>
       </div>
 
-      <div className="bg-white p-8 rounded-xl shadow-md border">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Issue Title</label>
-            <input 
-              required
-              type="text" 
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2" 
-              placeholder="E.g. Broken water pipe"
-            />
+      {/* ── Success Banner ──────────────────────────────────────────────────── */}
+      {submitResult && (
+        <div className="mb-6 p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+          <div className="flex items-center gap-2 font-semibold mb-2">
+            <span>✅</span> Ticket #{submitResult.ticket_id} submitted successfully
           </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea 
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2 h-28" 
-              placeholder="Describe the issue in detail..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Voice Note (Optional)</label>
-            <div className="flex items-center gap-4">
-              {!isRecording ? (
-                <button type="button" onClick={startRecording} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                  Record Voice Note
-                </button>
-              ) : (
-                <button type="button" onClick={stopRecording} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Stop Recording ({formatTime(recordingTime)})
-                </button>
-              )}
-              {audioUrl && !isRecording && (
-                <audio src={audioUrl} controls className="h-10" />
-              )}
+          <div className="text-sm space-y-1 text-emerald-400">
+            <div>
+              <span className="text-white/60">Detected domain: </span>
+              <span className="font-mono font-medium">{submitResult.domain ?? "—"}</span>
             </div>
+            {submitResult.cluster_id && (
+              <div>
+                <span className="text-white/60">Cluster: </span>
+                <span className="font-mono">#{submitResult.cluster_id}</span>
+              </div>
+            )}
+            {submitResult.transcription && (
+              <div className="mt-2 p-3 bg-slate-900/50 rounded-lg text-slate-300 text-xs font-mono">
+                <span className="text-white/60 block mb-1">Voice transcription:</span>
+                {submitResult.transcription}
+              </div>
+            )}
+            {submitResult.needs_human_review && (
+              <div className="mt-2 flex items-center gap-1.5 text-amber-300 text-xs">
+                ⚠️ This ticket has been flagged for human review before routing.
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Latitude</label>
-              <input type="text" value={lat} onChange={e=>setLat(e.target.value)} className="w-full border rounded-lg px-4 py-2" />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Longitude</label>
-              <input type="text" value={lng} onChange={e=>setLng(e.target.value)} className="w-full border rounded-lg px-4 py-2" />
-            </div>
-          </div>
-          <button type="button" onClick={handleGetLocation} className="text-sm text-blue-600 underline">Auto-detect location</button>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Photo / Video</label>
-            <input 
-              type="file" 
-              accept="image/*,video/*"
-              onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
-              className="w-full border rounded-lg px-4 py-2" 
-            />
-          </div>
-          
-          <div className="flex items-start gap-2">
-            <input 
-              type="checkbox" 
-              id="consent" 
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-              className="mt-1"
-            />
-            <label htmlFor="consent" className="text-sm text-gray-600">
-              I acknowledge that solutions arising from this report default to open/public-good licensing unless a participating industry partner negotiates otherwise.
-            </label>
-          </div>
-
           <button
-            type="submit"
-            className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50"
-            disabled={submitting}
+            onClick={() => setSubmitResult(null)}
+            className="mt-3 text-xs underline text-emerald-400 hover:text-emerald-300"
           >
-            {submitting ? "Submitting..." : "Submit Issue"}
+            Submit another issue
           </button>
-        </form>
-      </div>
+        </div>
+      )}
+
+      {/* ── Error Banner ────────────────────────────────────────────────────── */}
+      {submitError && (
+        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
+          <span className="mt-0.5">⚠️</span>
+          <span>{submitError}</span>
+        </div>
+      )}
+
+      {/* ── Form ────────────────────────────────────────────────────────────── */}
+      {!submitResult && (
+        <div className="glass-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Issue Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                required
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                placeholder="E.g. Broken water pipe on MG Road"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 h-28 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 resize-none"
+                placeholder="Describe the issue in detail..."
+              />
+            </div>
+
+            {/* Voice Note */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Voice Note{" "}
+                <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
+              <div className="flex items-center gap-4 flex-wrap">
+                {!isRecording ? (
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+                  >
+                    🎙️ Record Voice Note
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors text-sm"
+                  >
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    Stop Recording ({formatTime(recordingTime)})
+                  </button>
+                )}
+                {audioUrl && !isRecording && (
+                  <audio src={audioUrl} controls className="h-9" />
+                )}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Location{" "}
+                <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={lat}
+                  onChange={(e) => setLat(e.target.value)}
+                  placeholder="Latitude"
+                  className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm"
+                />
+                <input
+                  type="text"
+                  value={lng}
+                  onChange={(e) => setLng(e.target.value)}
+                  placeholder="Longitude"
+                  className="bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                className="text-sm text-indigo-400 hover:text-indigo-300 underline"
+              >
+                📍 Auto-detect my location
+              </button>
+            </div>
+
+            {/* Photo / Video */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Photo / Video{" "}
+                <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
+                className="w-full text-slate-400 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30 cursor-pointer"
+              />
+              {mediaFile && (
+                <p className="text-xs text-slate-500">
+                  Selected: {mediaFile.name} ({(mediaFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
+
+            {/* Consent */}
+            <div className="flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+              <input
+                type="checkbox"
+                id="consent"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 accent-indigo-500"
+              />
+              <label htmlFor="consent" className="text-sm text-slate-400 leading-relaxed">
+                I acknowledge that solutions arising from this report default to
+                open / public-good licensing unless a participating industry partner
+                negotiates otherwise.{" "}
+                <span className="text-red-400">*</span>
+              </label>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              className="btn-primary w-full justify-center py-3 text-base disabled:opacity-50"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                "Submit Issue"
+              )}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

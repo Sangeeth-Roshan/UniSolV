@@ -25,6 +25,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["citizen"],
   },
   {
+    href: "/my-tickets",
+    label: "My Tickets",
+    icon: "🎫",
+    roles: ["citizen"],
+  },
+  {
     href: "/dashboard/institution",
     label: "Institution Dashboard",
     icon: "🏛️",
@@ -33,7 +39,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard/government",
     label: "Government Overview",
-    icon: "🏛",
+    icon: "📊",
+    roles: ["government"],
+  },
+  {
+    href: "/dashboard/government/analytics",
+    label: "Analytics",
+    icon: "📈",
     roles: ["government"],
   },
   {

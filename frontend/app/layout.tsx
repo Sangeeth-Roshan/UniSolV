@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SidebarNav } from "@/components/SidebarNav";
+import { cookies } from "next/headers";
+import type { UserRole } from "@/components/SidebarNav";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -28,6 +30,37 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Derive role from the HttpOnly JWT cookie (server component — safe to do here)
+  let role: UserRole = "citizen";
+  let userInitial = "U";
+  try {
+    const token = cookies().get("token")?.value;
+    if (token) {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(
+        decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        )
+      );
+      const backendRole: string = payload.role ?? "citizen";
+      if (["university_admin", "student", "company"].includes(backendRole)) {
+        role = "institution";
+      } else if (backendRole === "government_officer") {
+        role = "government";
+      } else {
+        role = "citizen";
+      }
+      // Use email first letter as avatar initial
+      if (payload.sub) userInitial = (payload.sub as string)[0].toUpperCase();
+    }
+  } catch {
+    // No token or malformed — stay as citizen
+  }
+
   return (
     <html lang="en" className="dark">
       <body
@@ -35,8 +68,7 @@ export default function RootLayout({
       >
         {/* Shell: sidebar + main content area */}
         <div className="flex min-h-screen">
-          {/* Sidebar — role defaults to "citizen" for scaffold; swap for auth context later */}
-          <SidebarNav role="citizen" />
+          <SidebarNav role={role} />
 
           {/* Main content */}
           <main className="flex-1 ml-[260px] min-h-screen">
@@ -62,9 +94,9 @@ export default function RootLayout({
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500 border border-slate-950" />
                 </button>
 
-                {/* Avatar placeholder */}
+                {/* Avatar */}
                 <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-violet-500/20">
-                  U
+                  {userInitial}
                 </div>
               </div>
             </header>

@@ -40,7 +40,7 @@ export async function loginAction(formData: FormData) {
     }).join(''))
     const payload = JSON.parse(jsonPayload)
     return { success: true, role: payload.role }
-  } catch (e) {
+  } catch {
     return { success: true, role: 'citizen' } // default fallback if decoding fails
   }
 }

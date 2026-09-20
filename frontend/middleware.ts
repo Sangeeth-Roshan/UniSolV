@@ -21,7 +21,12 @@ export function middleware(request: NextRequest) {
 
       // Protect routes by role
       if ((pathname.startsWith('/submit') || pathname.startsWith('/my-tickets')) && role !== 'citizen') {
-        return NextResponse.redirect(new URL('/dashboard/' + role, request.url))
+        const dest = ['university_admin', 'student', 'company'].includes(role)
+          ? '/dashboard/institution'
+          : role === 'government_officer'
+          ? '/dashboard/government'
+          : '/'
+        return NextResponse.redirect(new URL(dest, request.url))
       }
 
       if (pathname.startsWith('/dashboard/institution') && !['university_admin', 'student', 'company'].includes(role)) {

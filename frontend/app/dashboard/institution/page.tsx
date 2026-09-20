@@ -1,5 +1,27 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+interface TicketEvent { type: string; notes: string | null; time: string }
+interface Ticket {
+  id: number; title: string; description: string; domain: string | null;
+  status: string; severity_score: number | null; events: TicketEvent[]
+}
+
+// ── Status badge helper ───────────────────────────────────────────────────────
+function statusBadge(status: string) {
+  const styles: Record<string, string> = {
+    pending_validation: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+    routed:             'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+    accepted:           'bg-violet-500/20 text-violet-300 border border-violet-500/30',
+    in_progress:        'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
+    piloting:           'bg-teal-500/20 text-teal-300 border border-teal-500/30',
+    verified:           'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+    closed:             'bg-slate-500/20 text-slate-400 border border-slate-500/30',
+    escalated:          'bg-red-500/20 text-red-300 border border-red-500/30',
+  }
+  return styles[status] ?? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+}
 
 async function getTickets() {
   const token = cookies().get('token')?.value
@@ -18,53 +40,102 @@ export default async function InstitutionDashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="page-title text-2xl font-bold">Institution Dashboard</h1>
+        <h1 className="page-title">Institution Dashboard</h1>
+        <p className="page-subtitle">Tickets assigned to your institution — accept, work on, and submit proposals.</p>
       </div>
-      
+
       <div className="flex flex-col gap-4">
-        {tickets.map((ticket: any) => (
-          <div key={ticket.id} className="p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{ticket.title}</h3>
-                <p className="text-sm text-slate-600">{ticket.description}</p>
-                <div className="mt-2 text-xs font-mono text-slate-400">Domain: {ticket.domain}</div>
+        {(tickets as Ticket[]).map((ticket) => (
+          <div key={ticket.id} className="glass-card p-5">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
+                <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{ticket.description}</p>
+                <div className="mt-2 flex items-center gap-3 flex-wrap">
+                  {ticket.domain && (
+                    <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
+                      {ticket.domain}
+                    </span>
+                  )}
+                  {ticket.severity_score != null && (
+                    <span className="text-xs text-slate-500">
+                      Severity: <span className="text-slate-300">{Number(ticket.severity_score).toFixed(2)}</span>
+                    </span>
+                  )}
+                </div>
               </div>
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">{ticket.status}</span>
+              <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(ticket.status)}`}>
+                {ticket.status.replace(/_/g, ' ')}
+              </span>
             </div>
 
-            {/* Actions for Institution */}
-            <div className="flex gap-2 mt-4">
-               <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/accept`, { method: 'POST', headers: { Authorization: `Bearer ${t}` }})
-               }}>
-                 <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Accept</button>
-               </form>
-               <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  await fetch(`http://localhost:8000/api/tickets/${ticket.id}/proposal`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ industry_partner_id: null })})
-               }}>
-                 <button className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">Submit Proposal</button>
-               </form>
+            {/* Actions */}
+            <div className="flex gap-2 mt-4 flex-wrap items-end">
+              {/* Accept */}
+              <form action={async () => {
+                'use server'
+                const t = cookies().get('token')?.value
+                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/accept`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${t}` }
+                })
+                if (res.ok) revalidatePath('/dashboard/institution')
+              }}>
+                <button className="px-3 py-1.5 bg-emerald-600/80 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors border border-emerald-500/40">
+                  ✓ Accept
+                </button>
+              </form>
+
+              {/* Submit Proposal — with optional industry partner ID */}
+              <form action={async (formData: FormData) => {
+                'use server'
+                const t = cookies().get('token')?.value
+                const partnerId = formData.get('industry_partner_id') as string
+                const body = { industry_partner_id: partnerId ? parseInt(partnerId, 10) : null }
+                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/proposal`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body)
+                })
+                if (res.ok) revalidatePath('/dashboard/institution')
+              }} className="flex items-center gap-2">
+                <input
+                  name="industry_partner_id"
+                  type="number"
+                  placeholder="Partner ID (optional)"
+                  className="bg-slate-900/50 border border-white/10 rounded-lg px-3 py-1.5 text-slate-300 placeholder-slate-600 text-sm w-44 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                />
+                <button type="submit" className="px-3 py-1.5 bg-violet-600/80 text-white text-sm rounded-lg hover:bg-violet-600 transition-colors border border-violet-500/40">
+                  📄 Submit Proposal
+                </button>
+              </form>
             </div>
 
             {/* Timeline */}
-            <div className="mt-6 border-t pt-4">
-              <h4 className="text-sm font-semibold mb-2">History</h4>
-              <ul className="text-xs text-slate-500 flex flex-col gap-1">
-                {ticket.events.map((event: any, i: number) => (
-                  <li key={i}>
-                    <span className="font-bold">{event.type}</span> at {new Date(event.time).toLocaleString()}: {event.notes}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {ticket.events?.length > 0 && (
+              <div className="mt-5 border-t border-white/5 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">History</h4>
+                <ul className="text-xs text-slate-500 flex flex-col gap-1.5">
+                  {ticket.events.map((event: TicketEvent, i: number) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 shrink-0" />
+                      <span>
+                        <span className="font-semibold text-slate-400">{String(event.type).replace(/_/g, ' ')}</span>
+                        {' — '}{new Date(event.time).toLocaleString()}
+                        {event.notes && <span className="text-slate-600">: {event.notes}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ))}
-        {tickets.length === 0 && <div className="text-slate-500">No tickets found.</div>}
+        {tickets.length === 0 && (
+          <div className="glass-card p-8 text-center text-slate-500">
+            No tickets assigned to your institution yet.
+          </div>
+        )}
       </div>
     </div>
   )
