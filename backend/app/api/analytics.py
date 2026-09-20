@@ -11,7 +11,7 @@ from app.models.ticket import Ticket
 from app.models.ticket_event import TicketEvent
 from app.models.institution import Institution
 from app.models.issue_cluster import IssueCluster
-from app.models.enums import TicketStatus
+from app.models.enums import TicketStatus, EventType
 
 router = APIRouter()
 
@@ -135,19 +135,21 @@ async def get_trends(
         end_of_day = start_of_day + timedelta(days=1)
         
         # Avg turnaround for closed tickets
-        q_closed = select(Ticket).where(
+        q_closed = select(Ticket.created_at, TicketEvent.created_at.label("closed_at")).join(
+            TicketEvent, Ticket.id == TicketEvent.ticket_id
+        ).where(
             Ticket.status == TicketStatus.closed,
+            TicketEvent.event_type == EventType.closed,
             Ticket.created_at >= start_of_day,
             Ticket.created_at < end_of_day
         )
         res_closed = await db.execute(q_closed)
-        closed_tickets = res_closed.scalars().all()
+        closed_tickets = res_closed.all()
         
         turnaround = 0
         if closed_tickets:
-            # Just mock turnaround based on SLA deadline minus created_at as an approximation
-            # since we don't have a "closed_at" column in the basic model, though TicketEvent has it.
-            turnarounds = [(t.sla_deadline - t.created_at).total_seconds() / 3600 for t in closed_tickets if t.sla_deadline]
+            # Genuine turnaround computation based on TicketEvent closed status
+            turnarounds = [(row.closed_at - row.created_at).total_seconds() / 3600 for row in closed_tickets]
             if turnarounds:
                 turnaround = sum(turnarounds) / len(turnarounds)
                 

@@ -11,11 +11,12 @@ from sqlalchemy import text, select
 
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models.enums import UserRole, InstitutionType, TicketStatus
+from app.models.enums import UserRole, InstitutionType, TicketStatus, EventType
 from app.models.user import User
 from app.models.institution import Institution
 from app.models.issue_cluster import IssueCluster
 from app.models.ticket import Ticket
+from app.models.ticket_event import TicketEvent
 
 from app.services.clustering.ticket_cluster_service import process_new_ticket
 from app.services.routing.escalation_engine import dispatch_ticket, check_sla_breaches
@@ -32,6 +33,11 @@ async def seed():
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async with async_session() as sess:
+        # Load embedding model once
+        from sentence_transformers import SentenceTransformer
+        logger.info("Loading SentenceTransformer model...")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+
         # Clear existing data
         logger.info("Clearing old data...")
         await sess.execute(text("TRUNCATE TABLE ticket_events, tickets, issue_clusters, users, institutions CASCADE"))
@@ -128,8 +134,8 @@ async def seed():
                 lon = data.get("lon", 85.0 + (i * 0.1))
                 domain = data.get("domain", "unknown")
             
-            # Create a dummy embedding
-            embedding = np.random.rand(384).astype(np.float32)
+            # Generate real embedding
+            embedding = model.encode(f"{data['title']}. {data['description']}", convert_to_numpy=True).astype(np.float32)
             
             t = Ticket(
                 reporter_id=citizen_id,
@@ -154,8 +160,19 @@ async def seed():
                 await dispatch_ticket(t, sess)
                 
             # If we want some closed tickets for the trend chart
-            if days_ago > 3 and t.status == TicketStatus.routed:
+            if days_ago > 3 and t.status == TicketStatus.routed and t.assigned_institution_id:
+                t.status = TicketStatus.accepted
+                sess.add(TicketEvent(ticket_id=t.id, event_type=EventType.accepted, created_at=t.created_at + timedelta(hours=1), notes="Accepted by inst"))
+                
                 t.status = TicketStatus.closed
+                sess.add(TicketEvent(ticket_id=t.id, event_type=EventType.closed, created_at=t.created_at + timedelta(hours=48), notes="Resolved"))
+                
+                inst = await sess.get(Institution, t.assigned_institution_id)
+                if inst and (inst.current_load or 0) > 0:
+                    inst.current_load -= 1
+                    
+                from app.services.reputation.reputation_engine import compute_reputation_update
+                await compute_reputation_update(t.assigned_institution_id, t, sess, is_sla_breach=False)
                 
             # If it's one of the first 5, force SLA breach for escalation demo
             if i == 0:
