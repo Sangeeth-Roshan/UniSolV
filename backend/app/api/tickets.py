@@ -52,10 +52,10 @@ def get_whisper_model():
 
 @router.post("")
 async def create_ticket(
-    reporter_id: int = Form(...),
     title: str = Form(...),
     description: str = Form(...),
     public_good_consent: bool = Form(...),
+    reporter_id: Optional[int] = Form(None),
     lat: Optional[float] = Form(None),
     lng: Optional[float] = Form(None),
     audio: Optional[UploadFile] = File(None),
@@ -73,6 +73,9 @@ async def create_ticket(
             status_code=400,
             detail="Public-good licensing consent is required to submit a report.",
         )
+
+    # If reporter_id not provided in form data, infer from current_user
+    actual_reporter_id = reporter_id if reporter_id is not None else current_user.id
 
     os.makedirs("uploads", exist_ok=True)
     media_urls = []
@@ -116,7 +119,7 @@ async def create_ticket(
         location = WKTElement(f"POINT({lng} {lat})", srid=4326)
 
     ticket = Ticket(
-        reporter_id=reporter_id,
+        reporter_id=actual_reporter_id,
         title=title,
         description=final_description,
         public_good_consent=True,

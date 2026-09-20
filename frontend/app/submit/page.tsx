@@ -12,6 +12,28 @@ interface SubmitResult {
   transcription: string;
 }
 
+function parseErrorMessage(detail: unknown): string {
+  if (!detail) return "Failed to submit ticket. Please try again.";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const loc = Array.isArray(item.loc) ? `${item.loc.slice(-1)[0]}: ` : "";
+          return `${loc}${item.msg || JSON.stringify(item)}`;
+        }
+        return String(item);
+      })
+      .join("; ");
+  }
+  if (typeof detail === "object" && detail !== null) {
+    const obj = detail as Record<string, unknown>;
+    return String(obj.message || obj.msg || obj.detail || JSON.stringify(detail));
+  }
+  return String(detail);
+}
+
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -147,7 +169,7 @@ export default function SubmitPage() {
         resetForm();
       } else {
         const body = await res.json().catch(() => ({ detail: res.statusText }));
-        setSubmitError(body.detail ?? "Failed to submit ticket. Please try again.");
+        setSubmitError(parseErrorMessage(body.detail));
       }
     } catch (err) {
       setSubmitError("Network error: " + String(err));
