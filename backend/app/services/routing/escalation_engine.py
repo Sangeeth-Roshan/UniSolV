@@ -69,11 +69,18 @@ async def dispatch_ticket(ticket: Ticket, db: AsyncSession) -> Ticket:
 
     if not shortlist:
         logger.warning(f"No available institutions to route ticket {ticket.id}")
+        ticket.routing_shortlist = []
         return ticket
 
-    top_choice = shortlist[0]
+    top_choice = shortlist.pop(0)
+    ticket.routing_shortlist = shortlist
     ticket.assigned_institution_id = top_choice
     ticket.status = TicketStatus.routed
+    
+    # MOD-3: Increment load on dispatch
+    inst = await db.get(Institution, top_choice)
+    if inst:
+        inst.current_load = (inst.current_load or 0) + 1
 
     # Set SLA deadline based on severity and hotspot
     base_hours = 48.0
@@ -95,6 +102,7 @@ async def dispatch_ticket(ticket: Ticket, db: AsyncSession) -> Ticket:
         notes=f"Routed to institution {top_choice} with SLA {sla_hours:.1f}h"
     )
     db.add(event)
+    db.add(ticket)  # MIN-2: explicitly track ticket
     return ticket
 
 
@@ -107,6 +115,11 @@ async def check_sla_breaches(db: AsyncSession) -> dict:
         Ticket.sla_deadline < now,
         Ticket.status.in_([TicketStatus.routed, TicketStatus.in_progress])
     )
+    # Using FOR UPDATE for CRIT-3 is required, but let's just do FOR UPDATE here.
+    # The instructions say: "CRIT-3: Add row-level locking to prevent the accept/escalate race. Use SELECT ... FOR UPDATE on the ticket row in both the /accept endpoint and check_sla_breaches()"
+    # So we should add with_for_update() to the query!
+    query = query.with_for_update()
+    
     result = await db.execute(query)
     tickets = result.scalars().all()
 
@@ -119,31 +132,24 @@ async def check_sla_breaches(db: AsyncSession) -> dict:
             
             # Penalize failed institution
             if failed_inst_id:
+                failed_inst = await db.get(Institution, failed_inst_id)
+                if failed_inst and (failed_inst.current_load or 0) > 0:
+                    failed_inst.current_load -= 1
                 from app.services.reputation.reputation_engine import compute_reputation_update
                 await compute_reputation_update(failed_inst_id, ticket, db, is_sla_breach=True)
 
-            # Find previously routed institutions for this ticket to exclude them
-            event_query = select(TicketEvent).where(
-                TicketEvent.ticket_id == ticket.id,
-                TicketEvent.event_type == EventType.routed
-            )
-            events_res = await db.execute(event_query)
-            
-            import re
-            exclude_ids = []
-            if failed_inst_id:
-                exclude_ids.append(failed_inst_id)
-            for ev in events_res.scalars():
-                match = re.search(r"Routed to institution (\d+)", ev.notes or "")
-                if match:
-                    exclude_ids.append(int(match.group(1)))
-
-            shortlist = await rank_institutions(ticket, db, exclude_ids=exclude_ids)
+            shortlist = list(ticket.routing_shortlist) if ticket.routing_shortlist else []
 
             if shortlist:
-                next_choice = shortlist[0]
+                next_choice = shortlist.pop(0)
                 ticket.assigned_institution_id = next_choice
+                new_inst = await db.get(Institution, next_choice)
+                if new_inst:
+                    new_inst.current_load = (new_inst.current_load or 0) + 1
+                ticket.routing_shortlist = shortlist
                 ticket.sla_deadline = now + timedelta(hours=24) # New SLA for escalated
+                # Per CRIT-5 follow-up: set status back to 'routed' so new inst can accept
+                ticket.status = TicketStatus.routed
 
                 event = TicketEvent(
                     ticket_id=ticket.id,
@@ -154,6 +160,7 @@ async def check_sla_breaches(db: AsyncSession) -> dict:
                 summary["escalated"] += 1
             else:
                 logger.warning(f"Ticket {ticket.id} escalated but no more institutions available.")
+                ticket.status = TicketStatus.escalated  # Terminal state
                 
         elif ticket.status == TicketStatus.in_progress:
             # Notify officer for manual intervention

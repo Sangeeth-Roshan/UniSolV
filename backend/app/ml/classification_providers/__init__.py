@@ -14,6 +14,7 @@ import logging
 import os
 from threading import Lock
 
+from app.core.config import settings
 from app.ml.classification_providers.base import ClassificationProvider, ClassificationResult
 from app.ml.classification_providers.cached_provider import CachedDatasetProvider
 from app.ml.classification_providers.live_llm_provider import LiveLLMProvider
@@ -24,8 +25,8 @@ _lock = Lock()
 _cached_instance: CachedDatasetProvider | None = None
 _live_instance: LiveLLMProvider | None = None
 
-# In-memory mode — can be flipped at runtime via the admin endpoint
-_current_mode: str = os.getenv("CLASSIFIER_MODE", "cached").lower()
+# MIN-1: In-memory mode - read from settings instead of os.getenv
+_current_mode: str = settings.CLASSIFIER_MODE.lower()
 
 
 def _get_cached() -> CachedDatasetProvider:
@@ -33,7 +34,10 @@ def _get_cached() -> CachedDatasetProvider:
     if _cached_instance is None:
         with _lock:
             if _cached_instance is None:
-                _cached_instance = CachedDatasetProvider()
+                # MOD-5: explicitly pass low_confidence_threshold
+                _cached_instance = CachedDatasetProvider(
+                    low_confidence_threshold=settings.SIMILARITY_THRESHOLD
+                )
     return _cached_instance
 
 

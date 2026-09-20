@@ -1,22 +1,29 @@
 """
 Admin API endpoints.
 
-POST /api/admin/classifier-mode
-    Flip the active classifier mode at runtime (no restart needed).
-    Useful for live demos.
+POST /api/admin/classifier-mode  — flip the active classifier mode at runtime.
+GET  /api/admin/classifier-mode  — query the current mode.
+
+Both require the ``government_officer`` role.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
+from app.api.dependencies import require_role
+from app.models.enums import UserRole
+from app.models.user import User
 from app.ml.classification_providers import (
     get_current_mode,
     set_classifier_mode,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+# Dependency alias for brevity
+_gov_only = require_role([UserRole.government_officer])
 
 
 class ClassifierModeRequest(BaseModel):
@@ -44,10 +51,14 @@ class ClassifierModeResponse(BaseModel):
     description=(
         "Switches the classifier between **cached** (nearest-neighbour on "
         "the synthetic dataset) and **live** (real LLM API call). "
-        "The change takes effect immediately in-memory — no restart needed."
+        "The change takes effect immediately in-memory — no restart needed.\n\n"
+        "**Requires:** `government_officer` role."
     ),
 )
-def set_mode(body: ClassifierModeRequest) -> ClassifierModeResponse:
+def set_mode(
+    body: ClassifierModeRequest,
+    _current_user: User = Depends(_gov_only),
+) -> ClassifierModeResponse:
     previous = get_current_mode()
     try:
         set_classifier_mode(body.mode)
@@ -64,6 +75,9 @@ def set_mode(body: ClassifierModeRequest) -> ClassifierModeResponse:
 @router.get(
     "/classifier-mode",
     summary="Get the currently active classifier mode",
+    description="**Requires:** `government_officer` role.",
 )
-def get_mode() -> dict[str, str]:
+def get_mode(
+    _current_user: User = Depends(_gov_only),
+) -> dict[str, str]:
     return {"mode": get_current_mode()}

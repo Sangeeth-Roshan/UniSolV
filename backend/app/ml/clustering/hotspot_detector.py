@@ -9,16 +9,18 @@ Algorithm
    non-null location and domain, and extract their (lat, lon) coordinates via
    ST_Y / ST_X.
 2. Run sklearn DBSCAN with:
-      eps   = CLUSTER_RADIUS_METERS / 111_320   (degrees ≈ metres at equator)
-      metric = 'euclidean'   (good enough at Jharkhand's latitude ~23°N)
+      metric = 'haversine'
+      eps    = CLUSTER_RADIUS_METERS / 6_371_000   (radians on a unit sphere)
       min_samples = 2
+   Coordinates are passed as [[lat_rad, lon_rad], ...] — haversine expects
+   radians, and lat must come first.
 3. For each DBSCAN cluster label (≥ 0, i.e. not noise):
    a. Group by domain; count per-domain members.
    b. If any domain group meets HOTSPOT_MIN_MEMBERS:
       - Upsert an IssueCluster row (or update existing matching cluster).
       - Set is_hotspot = True.
       - Emit a TicketEvent(type=hotspot_detected) on one representative ticket.
-      - Stub: call compress_sla(ticket_ids) — no-op until Module 5.
+      - Call _compress_sla(ticket_ids, db) — stub until Module 5 replaces it.
 4. Returns a summary dict for logging/testing.
 
 The function is async and designed to be called by the APScheduler job defined
@@ -57,17 +59,27 @@ DOMAIN_THRESHOLDS: dict[str, int] = {
 # SLA stub (Module 5 will replace this)
 # ---------------------------------------------------------------------------
 
-async def _compress_sla(ticket_ids: list[int], db: AsyncSession) -> None:  # noqa: ARG001
+async def _compress_sla(ticket_ids: list[int], db: AsyncSession) -> None:
     """
-    Stub: compress SLA deadlines for hotspot member tickets.
-    Module 5 (escalation service) will implement the real logic.
-    Called here to ensure the wiring is in place.
+    MOD-2: Compress SLA deadlines for hotspot member tickets.
+    We halve the originally allocated SLA window (the time from created_at to sla_deadline)
+    to compress the deadline now that it's a hotspot.
     """
-    logger.info(
-        "compress_sla: stub called for %d tickets — Module 5 not yet implemented",
-        len(ticket_ids),
-    )
-
+    if not ticket_ids:
+        return
+    
+    from sqlalchemy import select
+    from app.models.ticket import Ticket
+    
+    query = select(Ticket).where(Ticket.id.in_(ticket_ids), Ticket.sla_deadline.is_not(None))
+    result = await db.execute(query)
+    tickets = result.scalars().all()
+    
+    for t in tickets:
+        total_delta = t.sla_deadline - t.created_at
+        new_delta = total_delta / 2
+        t.sla_deadline = t.created_at + new_delta
+        logger.info(f"Compressed SLA for ticket {t.id}: {total_delta} -> {new_delta}")
 
 # ---------------------------------------------------------------------------
 # SQL helpers
@@ -144,10 +156,13 @@ async def run_hotspot_detection(db: AsyncSession) -> dict[str, Any]:
 
     summary["tickets_scanned"] = len(ticket_ids)
 
-    # DBSCAN — eps in degrees (~metres / 111_320)
-    eps_deg = settings.CLUSTER_RADIUS_METERS / 111_320.0
-    db_model = DBSCAN(eps=eps_deg, min_samples=2, metric="euclidean")
-    labels = db_model.fit_predict(coords)
+    # DBSCAN — haversine metric requires:
+    #   - coordinates as [[lat_rad, lon_rad], ...] (lat first, in radians)
+    #   - eps in radians: metres / Earth-radius-in-metres
+    coords_rad = np.deg2rad(coords)  # convert (lat_deg, lon_deg) → (lat_rad, lon_rad)
+    eps_rad = settings.CLUSTER_RADIUS_METERS / 6_371_000.0
+    db_model = DBSCAN(eps=eps_rad, min_samples=2, metric="haversine")
+    labels = db_model.fit_predict(coords_rad)
 
     unique_labels = set(labels) - {-1}
     summary["dbscan_clusters_found"] = len(unique_labels)
@@ -183,11 +198,17 @@ async def run_hotspot_detection(db: AsyncSession) -> dict[str, Any]:
             avg_severity = float(np.mean(label_severities))
 
             if existing_cluster_id is not None:
+                # MOD-2 Fix: Check if already a hotspot before acting
+                from app.models.issue_cluster import IssueCluster
+                existing_cluster = await db.get(IssueCluster, existing_cluster_id)
+                if existing_cluster and existing_cluster.is_hotspot:
+                    continue  # Already a hotspot, skip re-compressing SLAs
+
                 # Mark existing cluster as hotspot
-                await db.execute(
-                    _UPSERT_CLUSTER_HOTSPOT_SQL,
-                    {"cluster_id": existing_cluster_id},
-                )
+                if existing_cluster:
+                    existing_cluster.is_hotspot = True
+                    db.add(existing_cluster)
+                    
                 cluster_id = existing_cluster_id
                 logger.info(
                     "run_hotspot_detection: marked cluster %d as hotspot "

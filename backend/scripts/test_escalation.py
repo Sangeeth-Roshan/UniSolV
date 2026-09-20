@@ -27,7 +27,7 @@ class TestEscalationEngine(unittest.IsolatedAsyncioTestCase):
             id=1,
             name="Inst 1",
             domains_of_expertise=["water", "roads"],
-            reputation_score=0.8,
+            reputation_score=0.5,  # MOD-4: Starting reputation per spec is 0.5, not 0.8
             current_load=0,
             reputation_by_domain={}
         )
@@ -108,7 +108,8 @@ class TestEscalationEngine(unittest.IsolatedAsyncioTestCase):
             domain="water", 
             status=TicketStatus.routed, 
             assigned_institution_id=1,
-            sla_deadline=now - timedelta(hours=1)
+            sla_deadline=now - timedelta(hours=1),
+            routing_shortlist=[2, 3]
         )
         
         # For the check_sla_breaches db.execute call:
@@ -138,7 +139,7 @@ class TestEscalationEngine(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ticket.assigned_institution_id, 2) # Escalated to inst 2
         
         # Check inst1 penalty
-        self.assertEqual(self.inst1.reputation_score, 0.75) # 0.8 - 0.05
+        self.assertEqual(self.inst1.reputation_score, 0.40) # 0.8 EMA with 0.0 penalty
         
         events = [e for e in self.added_objects if isinstance(e, TicketEvent)]
         self.assertTrue(any(e.event_type == EventType.escalated for e in events))

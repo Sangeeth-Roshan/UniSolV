@@ -53,6 +53,9 @@ class Ticket(Base):
         nullable=True,
         index=True,
     )
+    routing_shortlist: Mapped[list[int]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
     sla_deadline: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
