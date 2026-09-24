@@ -1,0 +1,51 @@
+# UniSOLV backend — direct dependencies
+# Generated from the project venv on 2026-09-20.
+# Transitive dependencies (e.g. tokenizers pulled by sentence-transformers,
+# scipy pulled by scikit-learn) are intentionally omitted; pip resolves them.
+
+# ── Web framework ────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9        # multipart form parsing (UploadFile)
+httpx==0.27.0                  # LiveLLMProvider HTTP calls
+
+# ── Database / ORM ───────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.31
+asyncpg==0.29.0                # async PostgreSQL driver (app + Alembic via async engine)
+alembic==1.13.2
+geoalchemy2==0.15.2            # PostGIS Geography column types
+greenlet==3.0.3                # required by SQLAlchemy async
+
+# ── Config / validation ──────────────────────────────────────────────────────
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+PyJWT==2.14.0                  # JWT encode/decode (security.py, dependencies.py)
+bcrypt==5.0.0                  # password hashing (security.py)
+
+# ── Async file I/O ───────────────────────────────────────────────────────────
+aiofiles==25.1.0               # async audio/media file writes (tickets.py)
+
+# ── ML / Classification ──────────────────────────────────────────────────────
+sentence-transformers>=6.0.0   # ticket embedding (all-MiniLM-L6-v2)
+scikit-learn>=1.1.0            # DBSCAN hotspot detection
+numpy>=1.24.0                  # array ops throughout ML pipeline
+
+# ── Voice / Media ────────────────────────────────────────────────────────────
+openai-whisper==20250625       # Whisper ASR transcription (tickets.py)
+imageio-ffmpeg==0.6.0          # ffmpeg binary for Whisper (tickets.py PATH setup)
+
+# ── Scheduler ────────────────────────────────────────────────────────────────
+apscheduler==3.10.4            # APScheduler for hotspot + SLA breach jobs
+
+# ── Redis ────────────────────────────────────────────────────────────────────
+redis==5.0.8                   # future rate-limiting / caching (config present)
+
+# ── Transitive pin to resolve huggingface-hub/gTTS click conflict ────────────
+# huggingface-hub 1.32.0 requires click>=8.4.2,<9.0.0
+# gTTS 2.5.4 requires click<8.2  →  they cannot coexist; gTTS moved to requirements-dev.txt
+click>=8.4.2,<9.0.0
+
+# ── Script utilities (non-test) ───────────────────────────────────────────────
+requests==2.34.2               # used in test_voice_submission.py

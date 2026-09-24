@@ -1,0 +1,6 @@
+# UniSOLV backend — development / test-only dependencies
+# Install with: pip install -r requirements-dev.txt
+# NOTE: gTTS conflicts with huggingface-hub's click pin, so it lives here
+#       separately from the main requirements.txt.
+
+gTTS==2.5.4   # Hindi TTS audio generation for test_voice_submission.py
