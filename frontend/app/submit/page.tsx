@@ -24,6 +24,7 @@ interface SubmitResult {
   transcription?: string
   transcription_english?: string
   transcription_hindi?: string
+  contact_phone?: string
 }
 
 function parseErrorMessage(detail: unknown): string {
@@ -84,12 +85,13 @@ async function translateTextOnline(text: string, targetLang: 'hi' | 'en'): Promi
 export default function SubmitPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
 
   // Validation state
-  const [errors, setErrors] = useState<{ title?: string; description?: string; consent?: string; location?: string }>({})
+  const [errors, setErrors] = useState<{ title?: string; description?: string; consent?: string; location?: string; phone?: string }>({})
 
   // Audio & Speech Recognition state
   const [isRecording, setIsRecording] = useState(false)
@@ -277,9 +279,18 @@ export default function SubmitPage() {
 
     // Validation
     const effectiveDesc = description.trim() || englishTranslation.trim() || hindiTranslation.trim()
-    const newErrors: { title?: string; description?: string; consent?: string } = {}
+    const newErrors: { title?: string; description?: string; consent?: string; phone?: string } = {}
     if (!title.trim()) newErrors.title = 'Title is required. Please briefly describe the issue.'
     if (!effectiveDesc) newErrors.description = 'Detailed description or voice note is required for AI classification.'
+    
+    // Mobile number validation
+    const digitsOnly = contactPhone.replace(/\D/g, '')
+    if (!contactPhone.trim()) {
+      newErrors.phone = 'Mobile number is required so officers and resolution teams can contact you.'
+    } else if (digitsOnly.length < 10 || (digitsOnly.length > 10 && !contactPhone.includes('+') && digitsOnly.length > 12)) {
+      newErrors.phone = 'Please enter a valid 10-digit mobile number (e.g. 98765 43210).'
+    }
+
     if (!consent) newErrors.consent = 'You must acknowledge the public-good licensing terms.'
 
     if (Object.keys(newErrors).length > 0) {
@@ -293,6 +304,15 @@ export default function SubmitPage() {
     formData.append('title', title)
     formData.append('description', effectiveDesc)
     formData.append('public_good_consent', 'true')
+
+    // Clean and format phone for submission
+    let formattedPhone = contactPhone.trim()
+    if (digitsOnly.length === 10) {
+      formattedPhone = `+91 ${digitsOnly.slice(0, 5)} ${digitsOnly.slice(5)}`
+    } else if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
+      formattedPhone = `+91 ${digitsOnly.slice(2, 7)} ${digitsOnly.slice(7)}`
+    }
+    formData.append('contact_phone', formattedPhone)
 
     if (englishTranslation) formData.append('transcription_english', englishTranslation)
     if (hindiTranslation) formData.append('transcription_hindi', hindiTranslation)
@@ -320,6 +340,7 @@ export default function SubmitPage() {
           ...data,
           transcription_english: englishTranslation || data.transcription_english || data.transcription,
           transcription_hindi: hindiTranslation || data.transcription_hindi,
+          contact_phone: formattedPhone || data.contact_phone,
         })
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
@@ -339,6 +360,7 @@ export default function SubmitPage() {
   const resetForm = () => {
     setTitle('')
     setDescription('')
+    setContactPhone('')
     setConsent(false)
     setLat('')
     setLng('')
@@ -427,6 +449,20 @@ export default function SubmitPage() {
                 )}
               </div>
             )}
+
+            {submitResult.contact_phone && (
+              <div className="col-span-2 p-4 rounded-2xl bg-slate-950/60 border border-indigo-500/20 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <span>📱</span> Citizen Contact Number
+                  </div>
+                  <div className="font-semibold text-indigo-300 font-mono text-sm">{submitResult.contact_phone}</div>
+                </div>
+                <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full font-medium">
+                  Attached to Ticket
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-center gap-4">
@@ -474,6 +510,53 @@ export default function SubmitPage() {
                   } rounded-xl px-5 py-3.5 h-32 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all resize-none`}
                 />
                 {errors.description && <p className="mt-2 text-sm text-red-400">{errors.description}</p>}
+              </div>
+
+              {/* Citizen Contact Mobile Number */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex text-sm font-bold text-white items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>Contact Mobile Number / संपर्क मोबाइल नंबर</span>
+                    <span className="text-red-400 ml-1">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">For updates & verification</span>
+                </div>
+
+                <div className={`flex rounded-xl overflow-hidden border transition-all focus-within:ring-2 bg-slate-950 ${
+                  errors.phone ? 'border-red-500 focus-within:ring-red-500/50' : 'border-white/10 focus-within:border-indigo-500/50 focus-within:ring-indigo-500/50'
+                }`}>
+                  <div className="flex items-center gap-1.5 px-3.5 bg-slate-900 border-r border-white/10 text-slate-300 font-semibold text-sm select-none shrink-0">
+                    <span>🇮🇳</span>
+                    <span>+91</span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d\s-]/g, '')
+                      setContactPhone(val)
+                      if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }))
+                    }}
+                    placeholder="e.g. 98765 43210"
+                    maxLength={14}
+                    className="w-full bg-transparent px-4 py-3.5 text-slate-100 placeholder-slate-600 focus:outline-none text-sm font-medium"
+                  />
+                </div>
+                {errors.phone ? (
+                  <p className="mt-2 text-sm text-red-400 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{errors.phone}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    Field officers and the assigned institution team will contact you on this number for location clarification or resolution status.
+                  </p>
+                )}
               </div>
 
               {/* Media & Voice Row */}

@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/dashboard/government",
-    label: "Government Overview",
+    label: "Action Center",
     icon: "📊",
     roles: ["government"],
   },

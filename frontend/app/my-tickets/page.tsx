@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 interface TicketEvent { type: string; notes: string | null; time: string }
 interface Ticket {
   id: number; title: string; description: string; domain: string | null;
-  status: string; severity_score: number | null; events: TicketEvent[]
+  status: string; severity_score: number | null; contact_phone?: string | null; events: TicketEvent[]
 }
 
 // ── Status badge helper ───────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export default async function MyTicketsPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
                 <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{ticket.description}</p>
-                <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
                   {ticket.domain && (
                     <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
                       {ticket.domain}
@@ -64,6 +64,14 @@ export default async function MyTicketsPage() {
                   {ticket.severity_score != null && (
                     <span className="text-xs text-slate-500">
                       Severity: <span className="text-slate-300">{Number(ticket.severity_score).toFixed(2)}</span>
+                    </span>
+                  )}
+                  {ticket.contact_phone && (
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-900/80 border border-white/5 px-2.5 py-0.5 rounded-md">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span>Contact: <span className="text-slate-200 font-mono font-medium">{ticket.contact_phone}</span></span>
                     </span>
                   )}
                 </div>
