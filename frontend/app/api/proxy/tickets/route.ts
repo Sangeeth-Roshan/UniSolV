@@ -36,20 +36,17 @@ export async function POST(request: NextRequest) {
     // ignore
   }
 
-  // Forward the multipart form data to the backend
-  const formData = await request.formData()
-
-  if (!formData.has('reporter_id') && userId) {
-    formData.set('reporter_id', String(userId))
-  }
-
   try {
-    const backendRes = await fetch('http://localhost:8000/api/tickets', {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const backendRes = await fetch(`${backendUrl}/api/tickets`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': request.headers.get('Content-Type') || '',
       },
-      body: formData,
+      body: request.body,
+      // @ts-ignore - Next.js needs this for streaming request bodies
+      duplex: 'half',
     })
 
     const body = await backendRes.json().catch(() => ({

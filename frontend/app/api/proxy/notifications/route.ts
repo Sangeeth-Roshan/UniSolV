@@ -92,7 +92,8 @@ export async function GET() {
       : '/my-tickets'
 
   try {
-    const res = await fetch('http://localhost:8000/api/tickets', {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const res = await fetch(`${backendUrl}/api/tickets`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     })

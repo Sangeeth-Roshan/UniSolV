@@ -26,12 +26,15 @@ function statusBadge(status: string) {
 async function getTickets() {
   const token = cookies().get('token')?.value
   if (!token) return []
-  const res = await fetch('http://localhost:8000/api/tickets', {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store'
-  })
-  if (!res.ok) return []
-  return res.json()
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+  try {
+    const res = await fetch(`${backendUrl}/api/tickets`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch { return [] }
 }
 
 export default async function InstitutionDashboardPage() {
@@ -75,38 +78,46 @@ export default async function InstitutionDashboardPage() {
               <form action={async () => {
                 'use server'
                 const t = cookies().get('token')?.value
-                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/accept`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${t}` }
-                })
-                if (res.ok) revalidatePath('/dashboard/institution')
+                const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                try {
+                  const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/accept`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${t}` }
+                  })
+                  if (res.ok) revalidatePath('/dashboard/institution')
+                } catch {}
               }}>
-                <button className="px-3 py-1.5 bg-emerald-600/80 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors border border-emerald-500/40">
-                  ✓ Accept
+                <button className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600/80 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  Accept
                 </button>
               </form>
 
-              {/* Submit Proposal — with optional industry partner ID */}
+              {/* Submit Proposal */}
               <form action={async (formData: FormData) => {
                 'use server'
                 const t = cookies().get('token')?.value
                 const partnerId = formData.get('industry_partner_id') as string
                 const body = { industry_partner_id: partnerId ? parseInt(partnerId, 10) : null }
-                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/proposal`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-                  body: JSON.stringify(body)
-                })
-                if (res.ok) revalidatePath('/dashboard/institution')
+                const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                try {
+                  const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/proposal`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                  })
+                  if (res.ok) revalidatePath('/dashboard/institution')
+                } catch {}
               }} className="flex items-center gap-2">
                 <input
                   name="industry_partner_id"
                   type="number"
                   placeholder="Partner ID (optional)"
-                  className="bg-slate-900/50 border border-white/10 rounded-lg px-3 py-1.5 text-slate-300 placeholder-slate-600 text-sm w-44 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  className="bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-slate-300 placeholder-slate-600 text-sm w-44 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
                 />
-                <button type="submit" className="px-3 py-1.5 bg-violet-600/80 text-white text-sm rounded-lg hover:bg-violet-600 transition-colors border border-violet-500/40">
-                  📄 Submit Proposal
+                <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-violet-600/80 text-white text-sm font-semibold rounded-xl hover:bg-violet-600 transition-all border border-violet-500/40 shadow-sm shadow-violet-500/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Submit Proposal
                 </button>
               </form>
             </div>

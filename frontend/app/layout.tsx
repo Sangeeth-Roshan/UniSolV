@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { SidebarNav } from "@/components/SidebarNav";
 import { HeaderControls } from "@/components/HeaderControls";
 import { cookies } from "next/headers";
 import type { UserRole } from "@/components/SidebarNav";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +27,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Derive role and auth details from the HttpOnly JWT cookie
   let role: UserRole = "citizen";
   let userInitial = "U";
   let userEmail: string | undefined;
@@ -68,29 +63,23 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* Shell: sidebar + main content area */}
+      <body className={`${jakarta.variable} font-jakarta antialiased`}>
         <div className="flex min-h-screen">
           <SidebarNav
             role={role}
             isAuthenticated={isAuthenticated}
             userEmail={userEmail}
           />
-
-          {/* Main content */}
           <main className="flex-1 ml-[260px] min-h-screen flex flex-col">
-            {/* Dynamic Top bar with Notifications Dropdown and User Profile Menu */}
             <HeaderControls
               isAuthenticated={isAuthenticated}
               userEmail={userEmail}
               role={role}
               userInitial={userInitial}
             />
-
-            {/* Page content */}
-            <div className="px-8 py-8 flex-1">{children}</div>
+            <div className="px-8 py-8 flex-1">
+              {children}
+            </div>
           </main>
         </div>
       </body>

@@ -25,12 +25,15 @@ function statusBadge(status: string) {
 async function getTickets() {
   const token = cookies().get('token')?.value
   if (!token) return []
-  const res = await fetch('http://localhost:8000/api/tickets', {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store'
-  })
-  if (!res.ok) return []
-  return res.json()
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+  try {
+    const res = await fetch(`${backendUrl}/api/tickets`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch { return [] }
 }
 
 export default async function GovernmentDashboardPage() {
@@ -73,27 +76,35 @@ export default async function GovernmentDashboardPage() {
               <form action={async () => {
                 'use server'
                 const t = cookies().get('token')?.value
-                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/dispatch`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${t}` }
-                })
-                if (res.ok) revalidatePath('/dashboard/government')
+                const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                try {
+                  const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${t}` }
+                  })
+                  if (res.ok) revalidatePath('/dashboard/government')
+                } catch {}
               }}>
-                <button className="px-3 py-1.5 bg-blue-600/80 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors border border-blue-500/40">
-                  🚀 Dispatch / Route
+                <button className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600/80 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-all border border-blue-500/40 shadow-sm shadow-blue-500/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                  Dispatch
                 </button>
               </form>
               <form action={async () => {
                 'use server'
                 const t = cookies().get('token')?.value
-                const res = await fetch(`http://localhost:8000/api/tickets/${ticket.id}/close`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${t}` }
-                })
-                if (res.ok) revalidatePath('/dashboard/government')
+                const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                try {
+                  const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/close`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${t}` }
+                  })
+                  if (res.ok) revalidatePath('/dashboard/government')
+                } catch {}
               }}>
-                <button className="px-3 py-1.5 bg-slate-600/80 text-white text-sm rounded-lg hover:bg-slate-600 transition-colors border border-slate-500/40">
-                  ✓ Close Ticket
+                <button className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700/80 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-all border border-slate-500/40">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  Close Ticket
                 </button>
               </form>
             </div>

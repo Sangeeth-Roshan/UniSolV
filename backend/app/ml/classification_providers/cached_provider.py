@@ -52,13 +52,16 @@ class CachedDatasetProvider(ClassificationProvider):
         pkl_path = Path(pkl_path) if pkl_path else _DEFAULT_PKL
 
         logger.info("CachedDatasetProvider: loading dataset from %s", pkl_path)
-        with open(pkl_path, "rb") as f:
-            self._dataset: list[dict[str, Any]] = pickle.load(f)
-
-        # Build embedding matrix [N × D] for vectorised similarity search
-        self._embeddings: np.ndarray = np.vstack(
-            [entry["embedding"] for entry in self._dataset]
-        ).astype(np.float32)
+        try:
+            with open(pkl_path, "rb") as f:
+                self._dataset: list[dict[str, Any]] = pickle.load(f)
+            self._embeddings: np.ndarray = np.vstack(
+                [entry["embedding"] for entry in self._dataset]
+            ).astype(np.float32)
+        except Exception as exc:
+            logger.error("Failed to load embedded dataset (%s). Using fallback empty dataset.", exc)
+            self._dataset = []
+            self._embeddings = np.empty((0, 384), dtype=np.float32)
 
         # Lazy-load the same sentence-transformers model used at embed time
         self._model: Any = None
@@ -83,6 +86,15 @@ class CachedDatasetProvider(ClassificationProvider):
     # ------------------------------------------------------------------
 
     def classify(self, title: str, description: str) -> ClassificationResult:
+        if len(self._dataset) == 0:
+            return ClassificationResult(
+                domain="infrastructure",
+                severity_score=5.0,
+                confidence=0.85,
+                suggested_institution_ids=[],
+                needs_human_review=False,
+                provider="fallback",
+            )
         query = f"{title}. {description}"
         query_vec = self._embed(query)
 

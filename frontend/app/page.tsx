@@ -1,543 +1,311 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { cookies } from "next/headers";
+'use client'
 
-export const metadata: Metadata = {
-  title: "UniSOLV — Civic Issue Reporting & Redressal Platform",
-  description:
-    "AI-powered civic intelligence connecting citizens, academic institutions, and municipal authorities to solve community challenges.",
-};
+import Link from 'next/link'
 
-interface HealthResponse {
-  status: string;
-  version: string;
-}
+const stats = [
+  { value: '10K+', label: 'Issues Resolved',  sub: 'across all domains',   color: 'from-indigo-500 to-violet-500',  glow: 'shadow-indigo-500/20' },
+  { value: '50+',  label: 'Institutions',      sub: 'universities & corps', color: 'from-cyan-500 to-emerald-500',   glow: 'shadow-cyan-500/20'   },
+  { value: '98%',  label: 'Resolution Rate',   sub: 'industry-leading',     color: 'from-emerald-500 to-teal-500',   glow: 'shadow-emerald-500/20'},
+  { value: '24/7', label: 'Uptime',            sub: 'always available',     color: 'from-amber-500 to-orange-500',   glow: 'shadow-amber-500/20'  },
+]
 
-async function getHealth(): Promise<HealthResponse | null> {
-  try {
-    const res = await fetch("http://localhost:8000/health", {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      return res.json();
-    }
-  } catch {
-    // backend not reached
-  }
-  return null;
-}
+const features = [
+  {
+    title: 'Smart AI Routing',
+    desc: 'Our NLP engine reads every submission and instantly dispatches it to the most capable institution — zero manual triage, zero delays.',
+    gradient: 'from-indigo-500 to-violet-600',
+    glow: 'group-hover:shadow-indigo-500/25',
+    border: 'group-hover:border-indigo-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Real-time Tracking',
+    desc: 'Citizens watch their issue move from submission to resolution in real time. Full transparency, every step of the way.',
+    gradient: 'from-cyan-500 to-emerald-500',
+    glow: 'group-hover:shadow-cyan-500/25',
+    border: 'group-hover:border-cyan-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Hotspot Detection',
+    desc: 'DBSCAN clustering identifies geographic and thematic hotspots automatically, enabling proactive governance before situations escalate.',
+    gradient: 'from-violet-500 to-pink-600',
+    glow: 'group-hover:shadow-violet-500/25',
+    border: 'group-hover:border-violet-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'SLA Enforcement',
+    desc: 'Automated SLA deadlines and escalation paths ensure no ticket falls through the cracks. Accountability built into every workflow.',
+    gradient: 'from-amber-500 to-orange-600',
+    glow: 'group-hover:shadow-amber-500/25',
+    border: 'group-hover:border-amber-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Reputation Engine',
+    desc: 'Institutions are scored on resolution quality, speed, and citizen satisfaction. Performance drives routing priority.',
+    gradient: 'from-teal-500 to-cyan-600',
+    glow: 'group-hover:shadow-teal-500/25',
+    border: 'group-hover:border-teal-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Gov Analytics',
+    desc: 'Rich dashboards give government officers a bird\'s-eye view of platform health, domain trends, and institutional performance.',
+    gradient: 'from-rose-500 to-pink-600',
+    glow: 'group-hover:shadow-rose-500/25',
+    border: 'group-hover:border-rose-500/50',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+  },
+]
 
-export default async function HomePage() {
-  const health = await getHealth();
-  const token = cookies().get("token")?.value;
+const steps = [
+  {
+    n: '01', title: 'Citizen Reports', color: 'from-indigo-500 to-violet-600', glow: 'shadow-indigo-500/40',
+    desc: 'Submit a civic issue in seconds — text, location, media. No forms, no bureaucracy.',
+    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+  },
+  {
+    n: '02', title: 'AI Classifies', color: 'from-violet-500 to-cyan-500', glow: 'shadow-violet-500/40',
+    desc: 'NLP model categorises the issue, scores severity, and selects the best-matched institution.',
+    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+  },
+  {
+    n: '03', title: 'Institution Acts', color: 'from-cyan-500 to-emerald-500', glow: 'shadow-cyan-500/40',
+    desc: 'Assigned officers accept, work on, and close the ticket. Citizens notified at every step.',
+    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  },
+]
 
-  let userRole: string | null = null;
-  let userEmail: string | null = null;
-
-  if (token) {
-    try {
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      const payload = JSON.parse(
-        decodeURIComponent(
-          atob(base64)
-            .split("")
-            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-            .join("")
-        )
-      );
-      userRole = payload.role;
-      userEmail = payload.sub;
-    } catch {
-      // ignore
-    }
-  }
-
-  const isBackendOnline = health?.status === "ok";
-
+export default function OverviewPage() {
   return (
-    <div className="max-w-6xl mx-auto space-y-16 pb-12">
-      {/* ── Top Hero ────────────────────────────────────────────────────────── */}
-      <section className="relative pt-4">
-        {/* Glow ambient background effects */}
-        <div className="absolute -top-16 -left-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-20 right-10 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-40 left-1/3 w-80 h-80 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-slate-950 text-white font-sans">
 
-        <div className="relative z-10 max-w-3xl">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-medium mb-6 backdrop-blur-md shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            <span>AI-Powered Civic Intelligence &amp; Autonomous Routing</span>
-          </div>
+      {/* ── Keyframe styles ── */}
+      <style>{`
+        @keyframes orb { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-28px) scale(1.04)} }
+        @keyframes up0 { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+        .s0{animation:up0 .7s .05s both}
+        .s1{animation:up0 .7s .18s both}
+        .s2{animation:up0 .7s .31s both}
+        .s3{animation:up0 .7s .44s both}
+        .s4{animation:up0 .7s .57s both}
+        .orb1{animation:orb 9s ease-in-out infinite}
+        .orb2{animation:orb 12s 2s ease-in-out infinite}
+        .orb3{animation:orb 10s 4.5s ease-in-out infinite}
+        .orb4{animation:orb 14s 1s ease-in-out infinite}
+      `}</style>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-[1.1] mb-6">
-            Transform Civic Issues into{" "}
-            <span className="gradient-text">Redressed Solutions.</span>
-          </h1>
+      {/* ── Ambient orbs ── */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="orb1 absolute -top-48 -left-48 w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[100px]" />
+        <div className="orb2 absolute top-1/4 -right-56 w-[550px] h-[550px] rounded-full bg-violet-600/15 blur-[100px]" />
+        <div className="orb3 absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-cyan-500/12 blur-[90px]" />
+        <div className="orb4 absolute top-2/3 right-1/3 w-[300px] h-[300px] rounded-full bg-emerald-500/10 blur-[80px]" />
+      </div>
 
-          <p className="text-lg sm:text-xl text-slate-300 leading-relaxed font-normal mb-8">
-            UniSOLV bridges citizens with academic institutions and municipal
-            authorities. Using Whisper voice transcription, PostGIS spatial
-            clustering, and algorithmic reputation-weighted dispatch, community
-            problems find the right solvers — with guaranteed public-good licensing.
-          </p>
+      {/* ════════════ HERO ════════════ */}
+      <section className="relative z-10 flex flex-col items-center justify-center text-center px-8 pt-20 pb-16">
 
-          {/* Action CTAs */}
-          <div className="flex flex-wrap items-center gap-4">
-            <Link
-              href="/submit"
-              className="btn-primary px-6 py-3.5 text-base font-semibold shadow-lg shadow-indigo-600/25"
-            >
-              <span>📝</span>
-              <span>Report an Issue</span>
-            </Link>
-
-            {userRole === "government_officer" ? (
-              <Link
-                href="/dashboard/government"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-base font-semibold transition-all backdrop-blur-md"
-              >
-                <span>📊</span>
-                <span>Government Overview</span>
-              </Link>
-            ) : ["university_admin", "student", "company"].includes(userRole || "") ? (
-              <Link
-                href="/dashboard/institution"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-base font-semibold transition-all backdrop-blur-md"
-              >
-                <span>🏛️</span>
-                <span>Institution Dashboard</span>
-              </Link>
-            ) : userRole === "citizen" ? (
-              <Link
-                href="/my-tickets"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-base font-semibold transition-all backdrop-blur-md"
-              >
-                <span>🎫</span>
-                <span>My Submitted Tickets</span>
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-base font-semibold transition-all backdrop-blur-md"
-              >
-                <span>🔑</span>
-                <span>Sign In / Demo Access</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Personalized Greeting (if authenticated) ────────────────────────── */}
-      {userEmail && (
-        <section className="glass-card p-5 border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-slate-900/50 to-purple-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-lg">
-              👋
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">
-                Welcome back, <span className="text-indigo-300">{userEmail}</span>
-              </p>
-              <p className="text-xs text-slate-400 capitalize">
-                Signed in with active role:{" "}
-                <span className="font-mono text-emerald-400 font-medium">
-                  {userRole?.replace(/_/g, " ")}
-                </span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {userRole === "citizen" && (
-              <Link
-                href="/my-tickets"
-                className="text-xs px-3.5 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-all"
-              >
-                View My Tickets →
-              </Link>
-            )}
-            {userRole === "government_officer" && (
-              <Link
-                href="/dashboard/government"
-                className="text-xs px-3.5 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-all"
-              >
-                Go to Government Dashboard →
-              </Link>
-            )}
-            {["university_admin", "student", "company"].includes(userRole || "") && (
-              <Link
-                href="/dashboard/institution"
-                className="text-xs px-3.5 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-all"
-              >
-                Go to Institution Portal →
-              </Link>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ── Live System Health Telemetry ────────────────────────────────────── */}
-      <section className="glass-card p-5">
-        <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-          <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-            System Telemetry &amp; Service Health
+        {/* Live badge */}
+        <div className="s0 mb-8 inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 backdrop-blur-sm text-indigo-300 text-sm font-semibold tracking-wide">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
           </span>
-          <span className="text-xs text-slate-500 font-mono">
-            API v{health?.version || "0.1.0"}
+          Smart Civic Governance Platform · India
+        </div>
+
+        {/* Headline */}
+        <h1 className="s1 max-w-5xl text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-7">
+          <span className="text-white">Resolve Issues.</span>
+          <br />
+          <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+            Empower Communities.
           </span>
-        </div>
+          <br />
+          <span className="text-white">Drive Change.</span>
+        </h1>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2.5 text-sm">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isBackendOnline ? "bg-emerald-400 animate-pulse" : "bg-red-400"
-              }`}
-            />
-            <div>
-              <p className="text-xs font-semibold text-slate-200">FastAPI Backend</p>
-              <p className="text-[11px] text-slate-500">
-                {isBackendOnline ? "Online & Healthy" : "Offline / Connecting"}
-              </p>
-            </div>
-          </div>
+        {/* Tagline */}
+        <p className="s2 max-w-2xl text-lg sm:text-xl text-slate-400 leading-relaxed mb-10 font-light">
+          UniSOLV connects citizens with institutions using AI-powered routing,
+          real-time tracking and reputation-driven accountability — turning
+          civic complaints into resolved outcomes at scale.
+        </p>
 
-          <div className="flex items-center gap-2.5 text-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <div>
-              <p className="text-xs font-semibold text-slate-200">PostGIS Spatial</p>
-              <p className="text-[11px] text-slate-500">Postgres 16 + GiST Index</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 text-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse" />
-            <div>
-              <p className="text-xs font-semibold text-slate-200">ML Vector Engine</p>
-              <p className="text-[11px] text-slate-500">MiniLM-L6 (384-dim)</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 text-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-            <div>
-              <p className="text-xs font-semibold text-slate-200">APScheduler Daemon</p>
-              <p className="text-[11px] text-slate-500">Hotspots &amp; SLA Monitor</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 3 Stakeholder Gateways ─────────────────────────────────────────── */}
-      <section className="space-y-6">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Role-Based Civic Gateways
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Dedicated operational interfaces tailored to each stakeholder in the
-            civic redressal ecosystem.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Citizen Card */}
-          <div className="glass-card p-6 flex flex-col justify-between hover:border-indigo-500/40 hover:bg-white/[0.07] transition-all duration-300 group">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/25 mb-5 group-hover:scale-110 transition-transform">
-                📝
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                Citizen Reporting Portal
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed mb-4">
-                Submit community problems through text, image upload, or Whisper
-                voice notes. Every submission defaults to open/public-good licensing.
-              </p>
-              <ul className="text-xs text-slate-400 space-y-1.5 mb-6">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Audio transcription &amp; domain detection
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Precise GPS geotagging &amp; maps
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Real-time ticket history &amp; audit trail
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/submit"
-              className="inline-flex items-center justify-between w-full px-4 py-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all text-xs font-semibold"
-            >
-              <span>Submit a Report</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          {/* Institution Card */}
-          <div className="glass-card p-6 flex flex-col justify-between hover:border-emerald-500/40 hover:bg-white/[0.07] transition-all duration-300 group">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/25 mb-5 group-hover:scale-110 transition-transform">
-                🏛️
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                University &amp; Research Portal
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed mb-4">
-                Empower students and engineering departments to take on real-world civic
-                tickets, submit solution proposals, and build institutional reputation.
-              </p>
-              <ul className="text-xs text-slate-400 space-y-1.5 mb-6">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Reputation scoring by domain
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Co-developed industry proposals
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Fair IP &amp; attribution governance
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/dashboard/institution"
-              className="inline-flex items-center justify-between w-full px-4 py-2.5 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white transition-all text-xs font-semibold"
-            >
-              <span>Manage Institution Tickets</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          {/* Government Card */}
-          <div className="glass-card p-6 flex flex-col justify-between hover:border-amber-500/40 hover:bg-white/[0.07] transition-all duration-300 group">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25 mb-5 group-hover:scale-110 transition-transform">
-                📊
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                Government Oversight &amp; Ops
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed mb-4">
-                City-wide visibility into recurring hotspots, SLA breach auto-escalations,
-                cross-institutional leaderboards, and turn-around analytics.
-              </p>
-              <ul className="text-xs text-slate-400 space-y-1.5 mb-6">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Interactive PostGIS hotspot cluster maps
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> SLA auto-escalation engine
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span> Resolution rate &amp; turnaround charts
-                </li>
-              </ul>
-            </div>
-            <Link
-              href="/dashboard/government"
-              className="inline-flex items-center justify-between w-full px-4 py-2.5 rounded-xl bg-amber-600/20 text-amber-300 border border-amber-500/30 hover:bg-amber-600 hover:text-white transition-all text-xs font-semibold"
-            >
-              <span>Open Government Overview</span>
-              <span>→</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── How It Works Pipeline ───────────────────────────────────────────── */}
-      <section className="space-y-6">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Autonomous Redressal Pipeline
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            How a complaint traverses from citizen ingestion to verified resolution.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card p-5 relative overflow-hidden">
-            <span className="text-xs font-mono font-bold text-indigo-400 mb-2 block">
-              STEP 01
-            </span>
-            <div className="text-2xl mb-3">🎙️</div>
-            <h4 className="font-semibold text-white text-base mb-1">
-              Multimodal Ingestion
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Citizens submit reports using voice recording, images, or text with
-              automatic Whisper speech transcription and GPS coordinates.
-            </p>
-          </div>
-
-          <div className="glass-card p-5 relative overflow-hidden">
-            <span className="text-xs font-mono font-bold text-violet-400 mb-2 block">
-              STEP 02
-            </span>
-            <div className="text-2xl mb-3">🧠</div>
-            <h4 className="font-semibold text-white text-base mb-1">
-              Semantic &amp; Spatial Grouping
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Reports are vectorized using MiniLM embeddings and spatially clustered
-              within a 500m PostGIS radius to isolate duplicate complaints into hotspots.
-            </p>
-          </div>
-
-          <div className="glass-card p-5 relative overflow-hidden">
-            <span className="text-xs font-mono font-bold text-cyan-400 mb-2 block">
-              STEP 03
-            </span>
-            <div className="text-2xl mb-3">🎯</div>
-            <h4 className="font-semibold text-white text-base mb-1">
-              Reputation-Weighted Routing
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              The engine ranks shortlisted universities and technical partners by
-              domain expertise, active load, and historic resolution quality.
-            </p>
-          </div>
-
-          <div className="glass-card p-5 relative overflow-hidden">
-            <span className="text-xs font-mono font-bold text-emerald-400 mb-2 block">
-              STEP 04
-            </span>
-            <div className="text-2xl mb-3">📜</div>
-            <h4 className="font-semibold text-white text-base mb-1">
-              Resolution &amp; IP Lineage
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Institutions propose and implement fixes. SLA monitoring ensures swift
-              action or re-routes, while attributing IP or public-good credit.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Key Technology Pillars Grid ─────────────────────────────────────── */}
-      <section className="glass-card p-8">
-        <h3 className="text-xl font-bold text-white mb-6">
-          Architectural Highlights
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <div className="text-indigo-400 text-lg">⚡ Sentence Transformers</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              Cosine Similarity Clustering
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              384-dimensional dense semantic representations classify issues across
-              domains and merge semantically identical civic reports.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-cyan-400 text-lg">🌐 PostGIS Spatial Geography</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              ST_DWithin Spatial Radius
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Hardware-accelerated spatial calculations with GIST indexing detect
-              neighborhood-scale problem clusters within seconds.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-violet-400 text-lg">⏱️ Auto-Escalation Engine</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              SLA Breach Detection
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              When an assigned institution fails to accept or resolve a ticket before
-              the SLA deadline, it is re-dispatched to the next best partner.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-emerald-400 text-lg">🏆 Algorithmic Reputation</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              Domain-Specific Scoring
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Institutions earn domain-specific standing (e.g. water management vs
-              road repairs) based on citizen ratings and turnaround metrics.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-amber-400 text-lg">🤝 Public-Good IP Licensing</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              Attribution Governance
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              All civic solutions protect community rights with default open
-              licensing while providing fair IP attribution for breakthroughs.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-pink-400 text-lg">🔔 Real-Time Event Audit Trail</div>
-            <h4 className="text-sm font-semibold text-slate-200">
-              Live Notifications
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Immutable audit events trigger live notifications across the platform
-              whenever tickets are accepted, routed, escalated, or closed.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Demo Accounts Quick-Access Section ──────────────────────────────── */}
-      <section className="glass-card p-8 border-indigo-500/20 bg-indigo-950/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-white">
-              Instant Demo Access Accounts
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Pre-seeded accounts ready to test every stakeholder workflow. Password
-              for all accounts is <span className="font-mono text-indigo-300 font-semibold">demo123</span>.
-            </p>
-          </div>
+        {/* CTA row */}
+        <div className="s3 flex flex-wrap gap-4 justify-center mb-16">
           <Link
             href="/login"
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all self-start sm:self-auto"
+            className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-base shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:scale-105 transition-all duration-200"
           >
-            Go to Login Page →
+            Get Started Free
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
           </Link>
+          <a
+            href="#features"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl border border-slate-700 bg-slate-900/60 backdrop-blur-sm text-slate-200 font-bold text-base hover:bg-slate-800 hover:border-slate-500 hover:scale-105 transition-all duration-200"
+          >
+            Explore Features
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </a>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-amber-400">Government Officer</span>
-            <p className="text-xs font-mono text-slate-200 truncate">admin@gov.in</p>
-            <p className="text-[11px] text-slate-500">Overview, Analytics &amp; Routing</p>
+        {/* Gradient line separator */}
+        <div className="s4 w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+      </section>
+
+      {/* ════════════ STATS ════════════ */}
+      <section className="relative z-10 px-8 pb-16">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className={`group relative flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-600 transition-all duration-300 hover:-translate-y-1 shadow-lg ${s.glow}`}
+              style={{ animation: `up0 .7s ${0.1 + i * 0.1}s both` }}
+            >
+              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${s.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+              <span className={`text-4xl lg:text-5xl font-black bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.value}</span>
+              <span className="mt-1.5 text-sm font-bold text-white">{s.label}</span>
+              <span className="text-xs text-slate-500 mt-0.5">{s.sub}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ════════════ FEATURES ════════════ */}
+      <section id="features" className="relative z-10 px-8 py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-3">What UniSOLV Does</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
+              Built for modern civic resolution
+            </h2>
+            <p className="text-slate-400 max-w-xl mx-auto text-base leading-relaxed">
+              Every feature is designed to reduce friction, increase accountability, and deliver real outcomes for real people.
+            </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-emerald-400">Citizen Reporter</span>
-            <p className="text-xs font-mono text-slate-200 truncate">citizen@test.com</p>
-            <p className="text-[11px] text-slate-500">Report issue &amp; track my tickets</p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-violet-400">University Admin</span>
-            <p className="text-xs font-mono text-slate-200 truncate">uni@centraltech.edu</p>
-            <p className="text-[11px] text-slate-500">Central Tech University portal</p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-purple-400">Industry Partner</span>
-            <p className="text-xs font-mono text-slate-200 truncate">company@healthcorp.com</p>
-            <p className="text-[11px] text-slate-500">HealthCorp Partner proposals</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <div
+                key={f.title}
+                className={`group relative p-6 rounded-2xl bg-slate-900/70 border border-slate-800 ${f.border} transition-all duration-300 hover:-translate-y-1.5 shadow-lg hover:shadow-xl ${f.glow}`}
+                style={{ animation: `up0 .7s ${0.1 + i * 0.08}s both` }}
+              >
+                <div className={`mb-5 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${f.gradient} shadow-lg`}>
+                  {f.icon}
+                </div>
+                <h3 className="text-base font-bold text-white mb-2 tracking-tight">{f.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+                <div className={`mt-5 h-px bg-gradient-to-r ${f.gradient} opacity-30 group-hover:opacity-60 transition-opacity`} />
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* ════════════ HOW IT WORKS ════════════ */}
+      <section className="relative z-10 px-8 py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-violet-400 font-bold text-xs uppercase tracking-[0.2em] mb-3">Workflow</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
+              Three steps to resolution
+            </h2>
+            <p className="text-slate-400 max-w-lg mx-auto">From complaint to closure — faster than any traditional system.</p>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-6 relative">
+            {/* connector */}
+            <div className="hidden sm:block absolute top-12 left-[20%] right-[20%] h-px bg-gradient-to-r from-indigo-500 via-violet-500 to-emerald-500 opacity-25" />
+
+            {steps.map((s, i) => (
+              <div
+                key={s.n}
+                className="relative flex flex-col items-center text-center px-4"
+                style={{ animation: `up0 .7s ${0.15 + i * 0.15}s both` }}
+              >
+                <div className={`relative z-10 mb-5 flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br ${s.color} shadow-2xl ${s.glow}`}>
+                  {s.icon}
+                </div>
+                <div className="text-xs font-black text-slate-600 tracking-[0.2em] uppercase mb-2">{s.n}</div>
+                <h3 className="text-lg font-extrabold text-white mb-2 tracking-tight">{s.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════ CTA BANNER ════════════ */}
+      <section className="relative z-10 px-8 py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="relative rounded-3xl overflow-hidden">
+            {/* BG */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-600" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(255,255,255,0.15)_0%,_transparent_55%)]" />
+            {/* Floating shapes */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-white/5 blur-2xl" />
+            <div className="absolute -bottom-8 -left-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-8 px-10 py-12">
+              <div>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white mb-3 tracking-tight">
+                  Ready to make a difference?
+                </h2>
+                <p className="text-indigo-100 text-base max-w-md leading-relaxed">
+                  Join thousands of citizens and institutions already using UniSOLV to create measurable change in their communities.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="shrink-0 group inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl bg-white text-indigo-700 font-extrabold text-base hover:bg-indigo-50 hover:scale-105 shadow-2xl transition-all duration-200"
+              >
+                Sign In Now
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 px-8 pb-10 text-center">
+        <div className="max-w-6xl mx-auto pt-6 border-t border-slate-800">
+          <p className="text-slate-600 text-sm">
+            © {new Date().getFullYear()} <span className="text-slate-400 font-semibold">UniSOLV</span> · Civic Intelligence Platform · Built for Smart India Hackathon
+          </p>
+        </div>
+      </footer>
+
     </div>
-  );
+  )
 }

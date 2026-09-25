@@ -25,12 +25,17 @@ function statusBadge(status: string) {
 async function getTickets() {
   const token = cookies().get('token')?.value
   if (!token) return []
-  const res = await fetch('http://localhost:8000/api/tickets', {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store'
-  })
-  if (!res.ok) return []
-  return res.json()
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+  try {
+    const res = await fetch(`${backendUrl}/api/tickets`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
 }
 
 export default async function MyTicketsPage() {
