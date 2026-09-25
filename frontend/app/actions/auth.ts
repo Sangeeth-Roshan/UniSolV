@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string
@@ -36,6 +37,8 @@ export async function loginAction(formData: FormData) {
     maxAge: 60 * 60 * 24 * 7 // 1 week
   })
 
+  revalidatePath('/', 'layout')
+
   // Decode JWT payload without a library (it's safe here since we just trust the backend)
   try {
     const base64Url = data.access_token.split('.')[1]
@@ -52,5 +55,6 @@ export async function loginAction(formData: FormData) {
 
 export async function logoutAction() {
   cookies().delete('token')
+  revalidatePath('/', 'layout')
   redirect('/login')
 }

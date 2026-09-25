@@ -34,16 +34,48 @@ export function UserMenu({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
+  const [auth, setAuth] = useState({
+    isAuthenticated,
+    userEmail,
+    role,
+    userInitial,
+  });
+
+  // Sync with live /api/auth/me session on mount and route transitions
+  useEffect(() => {
+    setAuth({ isAuthenticated, userEmail, role, userInitial });
+
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.isAuthenticated === 'boolean') {
+          setAuth({
+            isAuthenticated: data.isAuthenticated,
+            userEmail: data.userEmail || undefined,
+            role: data.role || 'citizen',
+            userInitial: data.userInitial || 'U',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [isAuthenticated, userEmail, role, userInitial]);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await logoutAction();
+      await fetch('/api/auth/logout', { method: 'POST' });
     } catch {
-      // redirect throws Next.js redirect which is handled by next
+      try {
+        await logoutAction();
+      } catch {
+        // next redirect
+      }
+    } finally {
+      window.location.href = '/login';
     }
   };
 
-  if (!isAuthenticated) {
+  if (!auth.isAuthenticated) {
     return (
       <Link
         href="/login"
@@ -61,7 +93,7 @@ export function UserMenu({
     government: { title: "Government Officer", badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
   };
 
-  const currentRole = roleLabelMap[role] || { title: role, badgeColor: "bg-slate-500/20 text-slate-300" };
+  const currentRole = roleLabelMap[auth.role] || { title: auth.role, badgeColor: "bg-slate-500/20 text-slate-300" };
 
   return (
     <div className="relative" ref={menuRef}>
@@ -72,7 +104,7 @@ export function UserMenu({
         className="flex items-center gap-2 p-1 rounded-xl hover:bg-white/5 transition-all"
       >
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-violet-500/20 ring-2 ring-transparent hover:ring-indigo-500/50 transition-all">
-          {userInitial}
+          {auth.userInitial}
         </div>
       </button>
 
@@ -83,7 +115,7 @@ export function UserMenu({
           <div className="p-4 border-b border-white/10 bg-slate-950/60">
             <p className="text-xs text-slate-400">Signed in as</p>
             <p className="text-sm font-semibold text-white truncate mt-0.5">
-              {userEmail || "Authenticated User"}
+              {auth.userEmail || "Authenticated User"}
             </p>
             <div className="mt-2">
               <span
@@ -96,7 +128,7 @@ export function UserMenu({
 
           {/* Quick Navigation Links */}
           <div className="p-2 border-b border-white/10 space-y-1">
-            {role === "citizen" && (
+            {auth.role === "citizen" && (
               <>
                 <Link
                   href="/submit"
@@ -117,7 +149,7 @@ export function UserMenu({
               </>
             )}
 
-            {role === "institution" && (
+            {auth.role === "institution" && (
               <Link
                 href="/dashboard/institution"
                 onClick={() => setIsOpen(false)}
@@ -128,7 +160,7 @@ export function UserMenu({
               </Link>
             )}
 
-            {role === "government" && (
+            {auth.role === "government" && (
               <>
                 <Link
                   href="/dashboard/government"
