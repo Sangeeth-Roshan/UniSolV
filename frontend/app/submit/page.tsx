@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 
 // Dynamically import the map to avoid SSR issues with Leaflet
@@ -8,10 +8,12 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   ssr: false,
   loading: () => (
     <div className="h-[300px] w-full rounded-xl bg-slate-900/50 border border-white/10 flex flex-col items-center justify-center text-slate-500 animate-pulse">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" /></svg>
-      Loading map interface...
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
+      </svg>
+      Loading Jharkhand map interface...
     </div>
-  )
+  ),
 })
 
 interface SubmitResult {
@@ -19,27 +21,64 @@ interface SubmitResult {
   domain: string
   cluster_id: number | null
   needs_human_review: boolean
-  transcription: string
+  transcription?: string
+  transcription_english?: string
+  transcription_hindi?: string
 }
 
 function parseErrorMessage(detail: unknown): string {
-  if (!detail) return "Server error occurred during submission."
-  if (typeof detail === "string") return detail
+  if (!detail) return 'Server error occurred during submission.'
+  if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
-    return detail.map((item) => {
-      if (typeof item === "string") return item
-      if (item && typeof item === "object") {
-        const loc = Array.isArray(item.loc) ? `${item.loc.slice(-1)[0]}: ` : ""
-        return `${loc}${item.msg || JSON.stringify(item)}`
-      }
-      return String(item)
-    }).join("; ")
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object') {
+          const loc = Array.isArray(item.loc) ? `${item.loc.slice(-1)[0]}: ` : ''
+          return `${loc}${item.msg || JSON.stringify(item)}`
+        }
+        return String(item)
+      })
+      .join('; ')
   }
-  if (typeof detail === "object" && detail !== null) {
+  if (typeof detail === 'object' && detail !== null) {
     const obj = detail as Record<string, unknown>
     return String(obj.message || obj.msg || obj.detail || JSON.stringify(detail))
   }
   return String(detail)
+}
+
+// Client-side translation helper with multiple fallback options
+async function translateTextOnline(text: string, targetLang: 'hi' | 'en'): Promise<string> {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(trimmed)}`
+    const res = await fetch(url)
+    if (res.ok) {
+      const data = await res.json()
+      const translated = (data[0] || []).map((part: any) => part[0]).join('')
+      if (translated) return translated
+    }
+  } catch (err) {
+    // Fallback to secondary endpoint
+  }
+
+  try {
+    const pair = targetLang === 'hi' ? 'auto|hi' : 'auto|en'
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=${pair}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.responseData?.translatedText) {
+        return data.responseData.translatedText
+      }
+    }
+  } catch (err) {
+    // Ignore fallback error
+  }
+
+  return trimmed
 }
 
 export default function SubmitPage() {
@@ -50,13 +89,19 @@ export default function SubmitPage() {
   const [lng, setLng] = useState<string>('')
 
   // Validation state
-  const [errors, setErrors] = useState<{title?: string, consent?: string}>({})
+  const [errors, setErrors] = useState<{ title?: string; description?: string; consent?: string; location?: string }>({})
 
-  // Audio state
+  // Audio & Speech Recognition state
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [speechLanguage, setSpeechLanguage] = useState<'hi-IN' | 'en-IN'>('hi-IN')
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [spokenRawText, setSpokenRawText] = useState('')
+  const [englishTranslation, setEnglishTranslation] = useState('')
+  const [hindiTranslation, setHindiTranslation] = useState('')
+  const [isTranslating, setIsTranslating] = useState(false)
 
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -66,22 +111,61 @@ export default function SubmitPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
+  const recognitionRef = useRef<any>(null)
 
   const handleGetLocation = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLat(position.coords.latitude.toString())
-          setLng(position.coords.longitude.toString())
+          const userLat = position.coords.latitude
+          const userLng = position.coords.longitude
+          if (userLat >= 21.90 && userLat <= 25.40 && userLng >= 83.20 && userLng <= 87.90) {
+            setLat(userLat.toFixed(6))
+            setLng(userLng.toFixed(6))
+            setServerError(null)
+          } else {
+            setServerError('Your detected location is outside Jharkhand. UniSolV is currently active in Jharkhand. Please choose a location within Jharkhand using the search bar or map.')
+          }
         },
-        () => setServerError("Could not detect location. Please click on the map instead.")
+        () => setServerError('Could not detect location. Please search or click on the map instead.')
       )
     } else {
-      setServerError("Geolocation is not supported by your browser.")
+      setServerError('Geolocation is not supported by your browser.')
+    }
+  }
+
+  // Dual translation handler
+  const processBilingualTranslation = async (rawText: string) => {
+    if (!rawText.trim()) return
+    setIsTranslating(true)
+    try {
+      const [hi, en] = await Promise.all([
+        translateTextOnline(rawText, 'hi'),
+        translateTextOnline(rawText, 'en'),
+      ])
+      setHindiTranslation(hi || rawText)
+      setEnglishTranslation(en || rawText)
+
+      // If description is empty, automatically append bilingual summary
+      setDescription((prev) => {
+        if (!prev.trim()) {
+          return `[Voice Note - English]: ${en || rawText}\n[Voice Note - हिन्दी]: ${hi || rawText}`
+        }
+        return prev
+      })
+    } catch (err) {
+      console.error('Translation error:', err)
+    } finally {
+      setIsTranslating(false)
     }
   }
 
   const startRecording = async () => {
+    setLiveTranscript('')
+    setSpokenRawText('')
+    setEnglishTranslation('')
+    setHindiTranslation('')
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream)
@@ -102,9 +186,45 @@ export default function SubmitPage() {
       mediaRecorder.start()
       setIsRecording(true)
       setRecordingTime(0)
-      timerRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000)
+      timerRef.current = setInterval(() => setRecordingTime((p) => p + 1), 1000)
+
+      // Start Web Speech Recognition if supported
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition()
+          recognition.continuous = true
+          recognition.interimResults = true
+          recognition.lang = speechLanguage
+
+          let fullTranscript = ''
+
+          recognition.onresult = (event: any) => {
+            let interim = ''
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                fullTranscript += event.results[i][0].transcript + ' '
+              } else {
+                interim += event.results[i][0].transcript
+              }
+            }
+            const currentCombined = (fullTranscript + interim).trim()
+            setLiveTranscript(currentCombined)
+          }
+
+          recognition.onerror = (e: any) => {
+            console.warn('Speech recognition error/warning:', e.error)
+          }
+
+          recognition.start()
+          recognitionRef.current = recognition
+        } catch (recErr) {
+          console.warn('Could not start speech recognition:', recErr)
+        }
+      }
     } catch {
-      setServerError("Microphone access denied.")
+      setServerError('Microphone access denied or unavailable.')
     }
   }
 
@@ -114,10 +234,38 @@ export default function SubmitPage() {
       setIsRecording(false)
       if (timerRef.current) clearInterval(timerRef.current)
     }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch (e) {
+        // Ignore
+      }
+      recognitionRef.current = null
+    }
+
+    // Capture final spoken text and trigger translation
+    const finalSpoken = liveTranscript.trim()
+    if (finalSpoken) {
+      setSpokenRawText(finalSpoken)
+      processBilingualTranslation(finalSpoken)
+    }
+  }
+
+  const insertBilingualToDescription = () => {
+    const textToInsert = `[Voice Note - English]: ${englishTranslation || spokenRawText}\n[Voice Note - हिन्दी]: ${hindiTranslation || spokenRawText}`
+    setDescription((prev) => {
+      if (prev.includes(englishTranslation) || prev.includes(hindiTranslation)) {
+        return prev
+      }
+      return prev ? `${prev}\n\n${textToInsert}` : textToInsert
+    })
   }
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
     return `${m}:${s}`
   }
@@ -126,13 +274,14 @@ export default function SubmitPage() {
     e.preventDefault()
     setServerError(null)
     setErrors({})
-    
+
     // Validation
-    const newErrors: {title?: string, description?: string, consent?: string} = {}
-    if (!title.trim()) newErrors.title = "Title is required. Please briefly describe the issue."
-    if (!description.trim()) newErrors.description = "Detailed description is required for AI classification."
-    if (!consent) newErrors.consent = "You must acknowledge the public-good licensing terms."
-    
+    const effectiveDesc = description.trim() || englishTranslation.trim() || hindiTranslation.trim()
+    const newErrors: { title?: string; description?: string; consent?: string } = {}
+    if (!title.trim()) newErrors.title = 'Title is required. Please briefly describe the issue.'
+    if (!effectiveDesc) newErrors.description = 'Detailed description or voice note is required for AI classification.'
+    if (!consent) newErrors.consent = 'You must acknowledge the public-good licensing terms.'
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -142,10 +291,21 @@ export default function SubmitPage() {
     setSubmitting(true)
     const formData = new FormData()
     formData.append('title', title)
-    formData.append('description', description)
+    formData.append('description', effectiveDesc)
     formData.append('public_good_consent', 'true')
 
+    if (englishTranslation) formData.append('transcription_english', englishTranslation)
+    if (hindiTranslation) formData.append('transcription_hindi', hindiTranslation)
+
     if (lat && lng) {
+      const pLat = parseFloat(lat)
+      const pLng = parseFloat(lng)
+      if (isNaN(pLat) || isNaN(pLng) || pLat < 21.90 || pLat > 25.40 || pLng < 83.20 || pLng > 87.90) {
+        setServerError('The selected location must be strictly within Jharkhand state (21.90°N - 25.40°N, 83.20°E - 87.90°E).')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        setSubmitting(false)
+        return
+      }
       formData.append('lat', lat)
       formData.append('lng', lng)
     }
@@ -155,7 +315,12 @@ export default function SubmitPage() {
     try {
       const res = await fetch('/api/proxy/tickets', { method: 'POST', body: formData })
       if (res.ok) {
-        setSubmitResult(await res.json())
+        const data = await res.json()
+        setSubmitResult({
+          ...data,
+          transcription_english: englishTranslation || data.transcription_english || data.transcription,
+          transcription_hindi: hindiTranslation || data.transcription_hindi,
+        })
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
         const body = await res.json().catch(() => ({}))
@@ -179,6 +344,10 @@ export default function SubmitPage() {
     setLng('')
     setAudioBlob(null)
     setAudioUrl(null)
+    setLiveTranscript('')
+    setSpokenRawText('')
+    setEnglishTranslation('')
+    setHindiTranslation('')
     setMediaFile(null)
     setSubmitResult(null)
   }
@@ -193,18 +362,18 @@ export default function SubmitPage() {
         </div>
         <h1 className="text-3xl font-extrabold text-white tracking-tight mb-3">Report a Civic Issue</h1>
         <p className="text-slate-400 max-w-xl mx-auto text-base">
-          Help improve your community. Describe the problem, mark the location, and our AI will route it to the exact department responsible.
+          Help improve your community in Jharkhand. Describe the problem in Hindi or English, mark the location, and our AI will route it to the exact department responsible.
         </p>
       </div>
 
       {/* ── Server Error ── */}
       {serverError && (
-        <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
+        <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 animate-fade-in">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <h4 className="text-sm font-bold text-red-400 mb-1">Submission Failed</h4>
+            <h4 className="text-sm font-bold text-red-400 mb-1">Notice</h4>
             <p className="text-sm text-red-300/80">{serverError}</p>
           </div>
         </div>
@@ -220,9 +389,9 @@ export default function SubmitPage() {
           </div>
           <h2 className="text-3xl font-extrabold text-white mb-3">Ticket #{submitResult.ticket_id} Submitted!</h2>
           <p className="text-slate-400 max-w-md mx-auto mb-8">
-            Your issue has been successfully logged. Our AI has already begun processing it.
+            Your issue has been successfully logged and processed by the AI routing system.
           </p>
-          
+
           <div className="grid sm:grid-cols-2 gap-4 text-left max-w-lg mx-auto mb-10">
             <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/5">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Assigned Domain</div>
@@ -232,10 +401,30 @@ export default function SubmitPage() {
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cluster / Impact</div>
               <div className="font-semibold text-white">{submitResult.cluster_id ? `#${submitResult.cluster_id} (Hotspot)` : 'Isolated Issue'}</div>
             </div>
-            {submitResult.transcription && (
-              <div className="col-span-2 p-4 rounded-2xl bg-slate-950/50 border border-white/5">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voice Transcription</div>
-                <div className="text-sm text-slate-300 font-mono">"{submitResult.transcription}"</div>
+
+            {/* Bilingual Voice Interpretation in Success Screen */}
+            {(submitResult.transcription_english || submitResult.transcription_hindi || submitResult.transcription) && (
+              <div className="col-span-2 p-4 rounded-2xl bg-slate-950/60 border border-indigo-500/20 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <span>🎙️</span> Bilingual Voice Interpretation
+                  </span>
+                  <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">AI Interpreted</span>
+                </div>
+
+                {submitResult.transcription_english && (
+                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
+                    <span className="text-xs font-semibold text-indigo-300 block mb-0.5">🇬🇧 English Translation:</span>
+                    <span className="text-slate-200">{submitResult.transcription_english}</span>
+                  </div>
+                )}
+
+                {submitResult.transcription_hindi && (
+                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
+                    <span className="text-xs font-semibold text-emerald-300 block mb-0.5">🇮🇳 हिन्दी अनुवाद (Hindi):</span>
+                    <span className="text-slate-200">{submitResult.transcription_hindi}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -253,7 +442,6 @@ export default function SubmitPage() {
         /* ── Submission Form ── */
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-xl">
-            
             <div className="space-y-6">
               {/* Title */}
               <div>
@@ -264,8 +452,10 @@ export default function SubmitPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Broken water pipe on MG Road causing flooding"
-                  className={`w-full bg-slate-950 border ${errors.title ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'} rounded-xl px-5 py-3.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all`}
+                  placeholder="e.g. Broken water pipe on Main Road, Ranchi causing flooding"
+                  className={`w-full bg-slate-950 border ${
+                    errors.title ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'
+                  } rounded-xl px-5 py-3.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all`}
                 />
                 {errors.title && <p className="mt-2 text-sm text-red-400">{errors.title}</p>}
               </div>
@@ -278,53 +468,138 @@ export default function SubmitPage() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the issue in detail (location landmarks, severity, what happened)..."
-                  className={`w-full bg-slate-950 border ${errors.description ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'} rounded-xl px-5 py-3.5 h-32 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all resize-none`}
+                  placeholder="Describe the issue in detail (location landmarks, severity, what happened). You can also speak using the Voice Note below to auto-fill this in Hindi & English..."
+                  className={`w-full bg-slate-950 border ${
+                    errors.description ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'
+                  } rounded-xl px-5 py-3.5 h-32 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all resize-none`}
                 />
                 {errors.description && <p className="mt-2 text-sm text-red-400">{errors.description}</p>}
               </div>
 
               {/* Media & Voice Row */}
               <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-                
-                {/* Voice */}
-                <div>
-                  <label className="flex text-sm font-bold text-white mb-2">
-                    Voice Note <span className="text-slate-500 ml-2 font-medium">(Optional)</span>
-                  </label>
-                  <p className="text-xs text-slate-400 mb-3">Speak in any language. Our AI will transcribe and translate it automatically.</p>
-                  
+                {/* Voice Note Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <span>🎙️ Voice Note</span>
+                      <span className="text-slate-500 font-medium text-xs">(Bilingual Translation)</span>
+                    </label>
+                    <div className="flex items-center gap-1 bg-slate-950 border border-white/10 rounded-lg p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setSpeechLanguage('hi-IN')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          speechLanguage === 'hi-IN' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        हिन्दी
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSpeechLanguage('en-IN')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          speechLanguage === 'en-IN' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        English
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400">
+                    Speak in Hindi or English. Our AI will automatically transcribe and translate your report into both languages.
+                  </p>
+
                   {!isRecording ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <button
                         type="button"
                         onClick={startRecording}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors font-semibold text-sm"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-all font-semibold text-sm shadow-sm hover:scale-[1.02]"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                        Tap to Record
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        <span>{spokenRawText ? 'Re-record Voice Note' : 'Record Voice Note'}</span>
                       </button>
-                      {audioUrl && <audio src={audioUrl} controls className="h-10 max-w-[180px]" />}
+
+                      {audioUrl && <audio src={audioUrl} controls className="h-9 max-w-[190px]" />}
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={stopRecording}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors font-semibold text-sm w-full sm:w-auto justify-center"
-                    >
-                      <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                      Stop Recording ({formatTime(recordingTime)})
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-colors font-semibold text-sm w-full justify-center shadow-lg"
+                      >
+                        <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                        <span>Stop & Interpret ({formatTime(recordingTime)})</span>
+                      </button>
+
+                      {/* Live spoken preview */}
+                      {liveTranscript && (
+                        <div className="p-2.5 rounded-xl bg-slate-950/80 border border-indigo-500/20 text-xs text-indigo-200">
+                          <span className="text-slate-400 font-semibold mr-1.5">Listening:</span>
+                          <span className="italic">{liveTranscript}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Translating Indicator */}
+                  {isTranslating && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 animate-pulse">
+                      <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                      <span>Interpreting and translating speech into Hindi & English...</span>
+                    </div>
+                  )}
+
+                  {/* Bilingual Interpretation Card */}
+                  {(englishTranslation || hindiTranslation || spokenRawText) && !isRecording && (
+                    <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-indigo-500/30 shadow-lg space-y-2.5 animate-fade-in">
+                      <div className="flex items-center justify-between text-xs pb-1 border-b border-white/5">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <span className="text-emerald-400">✓</span> Voice Transcribed & Translated
+                        </span>
+                        <button
+                          type="button"
+                          onClick={insertBilingualToDescription}
+                          className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-1"
+                        >
+                          <span>✨</span>
+                          <span>Insert into Description</span>
+                        </button>
+                      </div>
+
+                      {/* English Display */}
+                      <div className="text-xs bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
+                        <div className="font-semibold text-indigo-300 mb-0.5 flex items-center gap-1">
+                          <span>🇬🇧</span>
+                          <span>English Interpretation:</span>
+                        </div>
+                        <p className="text-slate-200 leading-relaxed">{englishTranslation || spokenRawText}</p>
+                      </div>
+
+                      {/* Hindi Display */}
+                      <div className="text-xs bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
+                        <div className="font-semibold text-emerald-300 mb-0.5 flex items-center gap-1">
+                          <span>🇮🇳</span>
+                          <span>हिन्दी अनुवाद (Hindi):</span>
+                        </div>
+                        <p className="text-slate-200 leading-relaxed">{hindiTranslation || spokenRawText}</p>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Photo */}
+                {/* Photo / Evidence Upload */}
                 <div>
                   <label className="flex text-sm font-bold text-white mb-2">
                     Photo / Evidence <span className="text-slate-500 ml-2 font-medium">(Optional)</span>
                   </label>
                   <p className="text-xs text-slate-400 mb-3">Upload a picture of the issue to help teams assess severity.</p>
-                  
+
                   <div className="relative">
                     <input
                       type="file"
@@ -333,45 +608,41 @@ export default function SubmitPage() {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition-colors cursor-pointer">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                       {mediaFile ? mediaFile.name : 'Upload Photo'}
                     </div>
                   </div>
                 </div>
-
               </div>
 
-              {/* Map Location */}
+              {/* Map Location Section (Jharkhand) */}
               <div className="pt-4 border-t border-white/5">
-                <div className="flex justify-between items-end mb-4">
+                <div className="flex justify-between items-end mb-3">
                   <div>
-                    <label className="flex text-sm font-bold text-white mb-1">
-                      Pinpoint Location
-                    </label>
-                    <p className="text-xs text-slate-400">Click on the map to set the exact coordinates of the issue.</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <label className="text-sm font-bold text-white">Incident Location (Jharkhand)</label>
+                      <span className="text-[11px] font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                        Jharkhand Only
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">Search an address or landmark, enter coordinates, or click on the map.</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleGetLocation}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs font-semibold transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs font-semibold transition-colors shrink-0"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                     Use my location
                   </button>
                 </div>
-                
-                <LocationPicker 
-                  lat={lat} 
-                  lng={lng} 
-                  onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }} 
-                />
-                
-                {lat && lng && (
-                  <div className="mt-3 flex gap-4 text-xs font-mono text-slate-400 bg-slate-950/50 p-2.5 rounded-lg border border-white/5 inline-block">
-                    <span>Lat: <span className="text-white">{parseFloat(lat).toFixed(6)}</span></span>
-                    <span>Lng: <span className="text-white">{parseFloat(lng).toFixed(6)}</span></span>
-                  </div>
-                )}
+
+                <LocationPicker lat={lat} lng={lng} onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }} />
               </div>
             </div>
           </div>
@@ -408,9 +679,8 @@ export default function SubmitPage() {
               disabled={submitting}
               className="w-full relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-extrabold text-lg shadow-xl shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-[1.02] transition-all disabled:opacity-70 disabled:pointer-events-none disabled:scale-100 overflow-hidden group"
             >
-              {/* Shine effect */}
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
-              
+
               {submitting ? (
                 <>
                   <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -419,7 +689,9 @@ export default function SubmitPage() {
               ) : (
                 <>
                   Submit Ticket
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </>
               )}
             </button>
