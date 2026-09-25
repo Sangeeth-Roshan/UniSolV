@@ -22,9 +22,11 @@ ENV/
 
 # Pytest & Coverage
 .coverage
+.coverage.*
 htmlcov/
 .pytest_cache/
 .tox/
+.nox/
 nosetests.xml
 coverage.xml
 *.cover
@@ -33,19 +35,20 @@ coverage.xml
 # FastAPI / Web / Media
 backend/uploads/
 backend/data/
+uploads/
 *.db
 *.sqlite3
 *.pkl
 backend/ffmpeg.zip
 backend/ffmpeg_fast.zip
 backend/ffmpeg.exe
+ffmpeg
+ffmpeg.exe
 
 # Alembic
-# Note: DO NOT ignore alembic/versions/*.py as migrations should be tracked
-# Only ignore local SQLite if used
 backend/alembic.ini.bak
 
-# Machine Learning / Jupyter
+# Machine Learning / Jupyter / HuggingFace
 *.ipynb
 .ipynb_checkpoints
 huggingface/
@@ -69,24 +72,39 @@ frontend/build/
 out/
 build/
 
-# Next.js Cache
+# Next.js Cache & Types
 .tsbuildinfo
 *.tsbuildinfo
+frontend/next-env.d.ts
+.vercel/
 
 # ==================================
 # Environments & Secrets
 # ==================================
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+*.env
 backend/.env
 frontend/.env
 infra/.env
 *.pem
 *.key
 *.cert
+
+# ==================================
+# Docker & Containers
+# ==================================
+docker-compose.override.yml
+.docker/
+postgres_data/
+pgdata/
+
+# ==================================
+# Logs
+# ==================================
+*.log
+logs/
 
 # ==================================
 # OS / IDE / Editor
@@ -98,6 +116,7 @@ infra/.env
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 .idea/
 .vscode/
