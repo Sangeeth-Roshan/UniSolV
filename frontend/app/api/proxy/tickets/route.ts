@@ -18,11 +18,12 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Extract user ID from JWT payload (for future use / audit logging)
+  // Extract user ID from JWT payload
+  let userId: number | undefined
   try {
     const base64Url = token.split('.')[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    JSON.parse(
+    const payload = JSON.parse(
       decodeURIComponent(
         atob(base64)
           .split('')
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
           .join('')
       )
     )
+    userId = payload.id
   } catch {
     // ignore
   }

@@ -2,12 +2,10 @@
 
 import { useState } from 'react'
 import { loginAction } from '@/app/actions/auth'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -18,9 +16,11 @@ export default function LoginPage() {
       setError(result.error)
       setLoading(false)
     } else if (result?.success) {
-      if (result.role === 'citizen') router.push('/submit')
-      else if (result.role === 'government_officer') router.push('/dashboard/government')
-      else router.push('/dashboard/institution')
+      let target = '/submit'
+      if (result.role === 'citizen') target = '/submit'
+      else if (result.role === 'government_officer') target = '/dashboard/government'
+      else target = '/dashboard/institution'
+      window.location.href = target
     }
   }
 

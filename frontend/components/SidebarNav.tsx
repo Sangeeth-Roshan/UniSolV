@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
@@ -196,23 +196,53 @@ export function SidebarNav({
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  const [auth, setAuth] = useState({
+    role,
+    isAuthenticated,
+    userEmail,
+  });
+
+  // Sync with live /api/auth/me session on mount and route changes
+  useEffect(() => {
+    setAuth({ role, isAuthenticated, userEmail });
+
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.isAuthenticated === "boolean") {
+          setAuth({
+            isAuthenticated: data.isAuthenticated,
+            userEmail: data.userEmail || undefined,
+            role: (data.role as UserRole) || "citizen",
+          });
+        }
+      })
+      .catch(() => {});
+  }, [role, isAuthenticated, userEmail, pathname]);
+
   const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.guestOnly && isAuthenticated) return false;
-    if (item.authOnly && !isAuthenticated) return false;
-    if (item.roles && !item.roles.includes(role)) return false;
+    if (item.guestOnly && auth.isAuthenticated) return false;
+    if (item.authOnly && !auth.isAuthenticated) return false;
+    if (item.roles && !item.roles.includes(auth.role)) return false;
     return true;
   });
 
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await logoutAction();
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {
-      // next redirect
+      try {
+        await logoutAction();
+      } catch {
+        // next redirect
+      }
+    } finally {
+      window.location.href = "/login";
     }
   };
 
-  const badge = ROLE_BADGE[role];
+  const badge = ROLE_BADGE[auth.role] || ROLE_BADGE.citizen;
 
   const mainHrefs = new Set(["/", "/submit", "/my-tickets", "/login"]);
   const dashHrefs = new Set([
@@ -307,18 +337,18 @@ export function SidebarNav({
         <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${badge.bg}`}>
           {/* Animated pulse dot */}
           <span className="relative flex h-2 w-2 shrink-0">
-            {isAuthenticated && (
+            {auth.isAuthenticated && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
             )}
             <span
               className={`relative inline-flex rounded-full h-2 w-2 ${
-                isAuthenticated ? "bg-emerald-400" : "bg-slate-600"
+                auth.isAuthenticated ? "bg-emerald-400" : "bg-slate-600"
               }`}
             />
           </span>
 
           <div className="flex flex-col min-w-0 gap-0.5">
-            {isAuthenticated ? (
+            {auth.isAuthenticated ? (
               <>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] text-slate-500 leading-none">Signed in as</span>
@@ -328,9 +358,9 @@ export function SidebarNav({
                     {badge.label}
                   </span>
                 </div>
-                {userEmail && (
+                {auth.userEmail && (
                   <span className="text-[11px] font-mono text-slate-500 truncate leading-none">
-                    {userEmail}
+                    {auth.userEmail}
                   </span>
                 )}
               </>
@@ -370,7 +400,7 @@ export function SidebarNav({
 
       {/* ── Footer ── */}
       <div className="px-3 py-4 border-t border-white/[0.06] space-y-2">
-        {isAuthenticated ? (
+        {auth.isAuthenticated ? (
           <button
             onClick={handleLogout}
             disabled={loggingOut}

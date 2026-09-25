@@ -60,14 +60,12 @@ async def create_ticket(
     lng: Optional[float] = Form(None),
     audio: Optional[UploadFile] = File(None),
     media: Optional[UploadFile] = File(None),
+    transcription_hindi: Optional[str] = Form(None),
+    transcription_english: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a ticket with optional audio/media uploads.
-
-    Requires: any authenticated user (all roles).
-    The ``public_good_consent`` flag must be True — a 400 is returned otherwise.
-    """
+    """Create a ticket with optional audio/media uploads and bilingual voice transcription."""
     if not public_good_consent:
         raise HTTPException(
             status_code=400,
@@ -91,10 +89,10 @@ async def create_ticket(
         try:
             model = get_whisper_model()
             result = model.transcribe(audio_path)
-            transcribed_text = result["text"]
-            logger.info("Transcribed audio: %s", transcribed_text)
+            transcribed_text = result.get("text", "")
+            logger.info("Transcribed audio via Whisper: %s", transcribed_text)
         except Exception as exc:  # noqa: BLE001
-            logger.error("Whisper transcription failed: %s", exc)
+            logger.warning("Whisper transcription failed, relying on client transcript: %s", exc)
 
     if media and media.filename:
         media_path = f"uploads/{datetime.now().timestamp()}_{media.filename}"
@@ -104,8 +102,16 @@ async def create_ticket(
         media_urls.append(media_path)
 
     final_description = description
-    if transcribed_text:
-        final_description += f"\n\n[Transcribed Voice Note]: {transcribed_text.strip()}"
+    voice_sections = []
+    if transcription_english:
+        voice_sections.append(f"[Voice Note - English]: {transcription_english.strip()}")
+    if transcription_hindi:
+        voice_sections.append(f"[Voice Note - हिन्दी]: {transcription_hindi.strip()}")
+    elif transcribed_text:
+        voice_sections.append(f"[Transcribed Voice Note]: {transcribed_text.strip()}")
+
+    if voice_sections:
+        final_description += "\n\n" + "\n".join(voice_sections)
 
     # Classification — classify() is synchronous and CPU-bound; run in thread
     # pool so we don't stall the asyncio event loop.
@@ -161,7 +167,9 @@ async def create_ticket(
         "cluster_id": ticket.cluster_id,
         "domain": ticket.domain,
         "needs_human_review": classification_result.needs_human_review,
-        "transcription": transcribed_text,
+        "transcription": transcription_english or transcribed_text or transcription_hindi or "",
+        "transcription_english": transcription_english or transcribed_text or "",
+        "transcription_hindi": transcription_hindi or "",
     }
 
 
