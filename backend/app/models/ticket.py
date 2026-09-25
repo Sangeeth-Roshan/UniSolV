@@ -56,6 +56,10 @@ class Ticket(Base):
     routing_shortlist: Mapped[list[int]] = mapped_column(
         JSONB, nullable=False, server_default="[]"
     )
+    proof_media_urls: Mapped[Any] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    completion_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sla_deadline: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

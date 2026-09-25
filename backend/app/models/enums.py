@@ -36,6 +36,8 @@ class EventType(str, enum.Enum):
     escalated = "escalated"
     proposal_submitted = "proposal_submitted"
     piloted = "piloted"
+    in_progress = "in_progress"
+    completed = "completed"
     verified = "verified"
     closed = "closed"
     hotspot_detected = "hotspot_detected"
@@ -47,3 +49,9 @@ class IPOutcome(str, enum.Enum):
     startup = "startup"
     publication = "publication"
     none = "none"
+
+
+class ApplicationStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"

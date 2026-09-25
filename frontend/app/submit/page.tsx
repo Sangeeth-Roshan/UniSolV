@@ -50,7 +50,7 @@ export default function SubmitPage() {
   const [lng, setLng] = useState<string>('')
 
   // Validation state
-  const [errors, setErrors] = useState<{title?: string, consent?: string}>({})
+  const [errors, setErrors] = useState<{title?: string, consent?: string, description?: string}>({})
 
   // Audio state
   const [isRecording, setIsRecording] = useState(false)
@@ -163,7 +163,7 @@ export default function SubmitPage() {
         setServerError(errorMsg)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    } catch (err) {
+    } catch {
       setServerError('Network error. Please ensure the backend is running.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
@@ -235,7 +235,7 @@ export default function SubmitPage() {
             {submitResult.transcription && (
               <div className="col-span-2 p-4 rounded-2xl bg-slate-950/50 border border-white/5">
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voice Transcription</div>
-                <div className="text-sm text-slate-300 font-mono">"{submitResult.transcription}"</div>
+                <div className="text-sm text-slate-300 font-mono">&quot;{submitResult.transcription}&quot;</div>
               </div>
             )}
           </div>

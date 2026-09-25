@@ -11,7 +11,8 @@ async function fetchAnalytics() {
   if (!token) return null
 
   const headers = { Authorization: `Bearer ${token}` }
-  const BASE = 'http://localhost:8000/api/analytics'
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+  const BASE = `${backendUrl}/api/analytics`
 
   try {
     const [domRes, funRes, leadRes, hotRes, trendRes] = await Promise.all([

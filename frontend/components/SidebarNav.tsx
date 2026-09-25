@@ -58,12 +58,19 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["government"],
   },
   {
+    href: "/dashboard/government/applications",
+    label: "Institution Applications",
+    icon: "📋",
+    roles: ["government"],
+  },
+  {
     href: "/login",
     label: "Login / Sign Up",
     icon: "🔑",
     guestOnly: true,
   },
 ];
+
 
 // ---------------------------------------------------------------------------
 // SVG Icon Components (Heroicons Outline)
@@ -135,16 +142,18 @@ function IconLogout() {
 // Map each nav href to its icon component
 function NavIcon({ href }: { href: string }) {
   switch (href) {
-    case "/":                               return <IconGlobe />;
-    case "/submit":                         return <IconPencilSquare />;
-    case "/my-tickets":                     return <IconTicket />;
-    case "/dashboard/institution":          return <IconBuildingOffice />;
-    case "/dashboard/government":           return <IconChartBar />;
-    case "/dashboard/government/analytics": return <IconPresentationChartLine />;
-    case "/login":                          return <IconArrowRightOnRect />;
-    default:                                return <IconGlobe />;
+    case "/":                                          return <IconGlobe />;
+    case "/submit":                                    return <IconPencilSquare />;
+    case "/my-tickets":                                return <IconTicket />;
+    case "/dashboard/institution":                     return <IconBuildingOffice />;
+    case "/dashboard/government":                      return <IconChartBar />;
+    case "/dashboard/government/analytics":            return <IconPresentationChartLine />;
+    case "/dashboard/government/applications":         return <IconBuildingOffice />;
+    case "/login":                                     return <IconArrowRightOnRect />;
+    default:                                           return <IconGlobe />;
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Role badge config
@@ -210,6 +219,7 @@ export function SidebarNav({
     "/dashboard/institution",
     "/dashboard/government",
     "/dashboard/government/analytics",
+    "/dashboard/government/applications",
   ]);
 
   const mainItems = visibleItems.filter((i) => mainHrefs.has(i.href));

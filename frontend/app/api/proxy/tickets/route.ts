@@ -18,12 +18,11 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Extract user ID from JWT payload
-  let userId: number | undefined
+  // Extract user ID from JWT payload (for future use / audit logging)
   try {
     const base64Url = token.split('.')[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const payload = JSON.parse(
+    JSON.parse(
       decodeURIComponent(
         atob(base64)
           .split('')
@@ -31,7 +30,6 @@ export async function POST(request: NextRequest) {
           .join('')
       )
     )
-    userId = payload.id
   } catch {
     // ignore
   }
@@ -45,7 +43,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': request.headers.get('Content-Type') || '',
       },
       body: request.body,
-      // @ts-ignore - Next.js needs this for streaming request bodies
+      // @ts-expect-error - Next.js needs this for streaming request bodies
       duplex: 'half',
     })
 
