@@ -1,244 +1,182 @@
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import GovernmentDashboardClient from './GovernmentDashboardClient'
 
-interface TicketEvent { type: string; notes: string | null; time: string }
-interface Institution { id: number; name: string; type: string; domains_of_expertise: string[]; reputation_score: number; current_load: number }
-interface Ticket {
-  id: number; title: string; description: string; domain: string | null;
-  status: string; severity_score: number | null; events: TicketEvent[];
-  assigned_institution_id: number | null; assigned_institution_name: string | null;
-  proof_media_urls: string[]; completion_notes: string | null; created_at: string;
+// ── Types ─────────────────────────────────────────────────────────────────────
+export interface TicketEvent { type: string; notes: string | null; time: string | null }
+export interface AssignedInstitution {
+  id: number; name: string; type: string
+  reputation_score: number; current_load: number; domains_of_expertise: string[]
+}
+export interface Ticket {
+  id: number; title: string; description: string; domain: string | null
+  status: string; severity_score: number | null; contact_phone?: string | null
+  classification_confidence?: number | null; media_urls?: string[]
+  created_at?: string; updated_at?: string
+  sla_deadline?: string | null; sla_status?: string; sla_hours_remaining?: number | null
+  routing_shortlist?: number[]
+  assigned_institution?: AssignedInstitution | null
+  events: TicketEvent[]
 }
 
-function statusBadge(status: string) {
-  const styles: Record<string, string> = {
-    pending_validation: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-    routed:             'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-    accepted:           'bg-violet-500/20 text-violet-300 border border-violet-500/30',
-    in_progress:        'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
-    piloting:           'bg-teal-500/20 text-teal-300 border border-teal-500/30',
-    verified:           'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-    closed:             'bg-slate-500/20 text-slate-400 border border-slate-500/30',
-    escalated:          'bg-red-500/20 text-red-300 border border-red-500/30',
-  }
-  return styles[status] ?? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+export interface Summary {
+  total_tickets: number; open_tickets: number; closed_tickets: number
+  escalated_tickets: number; resolution_rate: number; avg_severity: number
+  institution_count: number; avg_institution_load: number; avg_institution_reputation: number
+  top_domain: string; top_domain_count: number; tickets_with_contact: number
+  status_breakdown: Record<string, number>
 }
 
-async function getData() {
-  const token = cookies().get('token')?.value
-  if (!token) return { tickets: [], institutions: [] }
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+export interface InstitutionWorkload {
+  id: number; name: string; type: string; reputation_score: number
+  current_load: number; capacity_status: string
+  domains_of_expertise: string[]; reputation_by_domain: Record<string, number>
+  total_tickets: number; status_counts: Record<string, number>
+  resolution_rate: number; sla_breached: number; sla_critical: number; sla_at_risk: number
+}
+
+export interface SlaTicket {
+  id: number; title: string; domain: string | null; status: string
+  severity_score: number | null; sla_deadline: string; sla_hours_remaining: number
+  sla_level: string; assigned_institution: string | null; institution_type: string | null
+  created_at: string | null
+}
+
+export interface SlaRisk {
+  breached: SlaTicket[]; critical: SlaTicket[]; at_risk: SlaTicket[]
+  safe: SlaTicket[]; summary: Record<string, number>
+}
+
+export interface StaleTicket {
+  id: number; title: string; domain: string | null; status: string
+  severity_score: number | null; hours_stale: number; created_at: string | null
+  updated_at: string | null; assigned_institution: string; sla_deadline: string | null
+  sla_hours_remaining: number | null
+}
+
+// ── Data fetchers ──────────────────────────────────────────────────────────────
+const B = () => process.env.BACKEND_URL || 'http://localhost:8000'
+
+async function getToken() { return cookies().get('token')?.value }
+
+async function getTickets(): Promise<Ticket[]> {
+  const token = await getToken(); if (!token) return []
   try {
-    const [ticketsRes, institutionsRes] = await Promise.all([
-      fetch(`${backendUrl}/api/tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
-      fetch(`${backendUrl}/api/institutions`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
-    ])
-    const tickets = ticketsRes.ok ? await ticketsRes.json() : []
-    const institutions = institutionsRes.ok ? await institutionsRes.json() : []
-    return { tickets, institutions }
-  } catch { return { tickets: [], institutions: [] } }
+    const res = await fetch(`${B()}/api/tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    return res.ok ? res.json() : []
+  } catch { return [] }
 }
 
+async function getSummary(): Promise<Summary | null> {
+  const token = await getToken(); if (!token) return null
+  try {
+    const res = await fetch(`${B()}/api/analytics/summary`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    return res.ok ? res.json() : null
+  } catch { return null }
+}
+
+async function getInstitutionWorkload(): Promise<InstitutionWorkload[]> {
+  const token = await getToken(); if (!token) return []
+  try {
+    const res = await fetch(`${B()}/api/analytics/institution-workload`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    return res.ok ? res.json() : []
+  } catch { return [] }
+}
+
+async function getSlaRisk(): Promise<SlaRisk | null> {
+  const token = await getToken(); if (!token) return null
+  try {
+    const res = await fetch(`${B()}/api/analytics/sla-risk`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    return res.ok ? res.json() : null
+  } catch { return null }
+}
+
+async function getStaleTickets(): Promise<StaleTicket[]> {
+  const token = await getToken(); if (!token) return []
+  try {
+    const res = await fetch(`${B()}/api/analytics/stale-tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    return res.ok ? res.json() : []
+  } catch { return [] }
+}
+
+// ── Server actions ─────────────────────────────────────────────────────────────
+async function dispatchTicket(ticketId: number) {
+  'use server'
+  const token = cookies().get('token')?.value
+  try {
+    const res = await fetch(`${B()}/api/tickets/${ticketId}/dispatch`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    })
+    if (res.ok) revalidatePath('/dashboard/government')
+  } catch {}
+}
+
+async function assignTicket(ticketId: number, institutionId: number) {
+  'use server'
+  const token = cookies().get('token')?.value
+  try {
+    const res = await fetch(`${B()}/api/tickets/${ticketId}/assign`, {
+      method: 'POST', 
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ institution_id: institutionId })
+    })
+    if (res.ok) revalidatePath('/dashboard/government')
+  } catch {}
+}
+
+async function closeTicket(ticketId: number) {
+  'use server'
+  const token = cookies().get('token')?.value
+  try {
+    const res = await fetch(`${B()}/api/tickets/${ticketId}/close`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    })
+    if (res.ok) revalidatePath('/dashboard/government')
+  } catch {}
+}
+
+// ── Fallback summary from ticket list ─────────────────────────────────────────
+function computeSummaryFallback(tickets: Ticket[]): Summary {
+  const total = tickets.length
+  const openStatuses = new Set(['pending_validation', 'routed', 'accepted', 'in_progress', 'piloting'])
+  const open = tickets.filter(t => openStatuses.has(t.status)).length
+  const closed = tickets.filter(t => t.status === 'closed').length
+  const escalated = tickets.filter(t => t.status === 'escalated').length
+  const withSev = tickets.filter(t => t.severity_score != null)
+  const avgSev = withSev.length ? withSev.reduce((a, b) => a + (b.severity_score ?? 0), 0) / withSev.length : 0
+  const domainCounts: Record<string, number> = {}
+  tickets.forEach(t => { if (t.domain) domainCounts[t.domain] = (domainCounts[t.domain] ?? 0) + 1 })
+  const topDomain = Object.entries(domainCounts).sort((a, b) => b[1] - a[1])[0]
+  const statusBreakdown: Record<string, number> = {}
+  tickets.forEach(t => { statusBreakdown[t.status] = (statusBreakdown[t.status] ?? 0) + 1 })
+  return {
+    total_tickets: total, open_tickets: open, closed_tickets: closed, escalated_tickets: escalated,
+    resolution_rate: total > 0 ? Math.round((closed / total) * 1000) / 10 : 0,
+    avg_severity: Math.round(avgSev * 100) / 100,
+    institution_count: 0, avg_institution_load: 0, avg_institution_reputation: 0,
+    top_domain: topDomain?.[0] ?? 'N/A', top_domain_count: topDomain?.[1] ?? 0,
+    tickets_with_contact: tickets.filter(t => t.contact_phone).length,
+    status_breakdown: statusBreakdown,
+  }
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────────
 export default async function GovernmentDashboardPage() {
-  const { tickets, institutions } = await getData()
+  const [tickets, summary, workload, slaRisk, stale] = await Promise.all([
+    getTickets(), getSummary(), getInstitutionWorkload(), getSlaRisk(), getStaleTickets()
+  ])
+  const stats = summary ?? computeSummaryFallback(tickets)
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="page-title">Government Dashboard</h1>
-        <p className="page-subtitle">All civic tickets — assign to institutions, verify completions, and close resolved issues.</p>
-      </div>
-
-      <div className="flex flex-col gap-4">
-        {(tickets as Ticket[]).map((ticket) => (
-          <div key={ticket.id} className="glass-card p-5">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
-                  <span className="text-xs text-slate-600">#{ticket.id}</span>
-                </div>
-                <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{ticket.description}</p>
-                <div className="mt-2 flex items-center gap-3 flex-wrap">
-                  {ticket.domain && (
-                    <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
-                      {ticket.domain}
-                    </span>
-                  )}
-                  {ticket.severity_score != null && (
-                    <span className="text-xs text-slate-500">
-                      Severity: <span className="text-slate-300">{Number(ticket.severity_score).toFixed(2)}</span>
-                    </span>
-                  )}
-                  {ticket.assigned_institution_name && (
-                    <span className="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded">
-                      🏛 {ticket.assigned_institution_name}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(ticket.status)}`}>
-                {ticket.status.replace(/_/g, ' ')}
-              </span>
-            </div>
-
-            {/* Proof of completion */}
-            {ticket.completion_notes && (
-              <div className="mt-3 p-3 rounded-lg bg-teal-500/5 border border-teal-500/20">
-                <p className="text-xs font-bold text-teal-400 mb-1">📋 Completion Notes</p>
-                <p className="text-sm text-slate-300">{ticket.completion_notes}</p>
-              </div>
-            )}
-            {ticket.proof_media_urls && ticket.proof_media_urls.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs font-bold text-emerald-400 mb-2">📸 Proof of Completion ({ticket.proof_media_urls.length} file{ticket.proof_media_urls.length !== 1 ? 's' : ''})</p>
-                <div className="flex flex-wrap gap-2">
-                  {ticket.proof_media_urls.map((url, i) => (
-                    <a key={i} href={`http://localhost:8000/${url}`} target="_blank" rel="noopener noreferrer"
-                       className="inline-flex items-center gap-1 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded hover:bg-emerald-500/20 transition-colors">
-                      📎 File {i + 1}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 mt-4 flex-wrap items-end">
-              {/* Dispatch with institution picker */}
-              {(ticket.status === 'pending_validation' || ticket.status === 'escalated') && (
-                <form action={async (formData: FormData) => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const instId = formData.get('institution_id') as string
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const body: Record<string, unknown> = {}
-                    if (instId) body.institution_id = parseInt(instId, 10)
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(body)
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }} className="flex items-center gap-2 flex-wrap">
-                  <select name="institution_id" className="bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-w-[220px]">
-                    <option value="">AI Auto-assign</option>
-                    {(institutions as Institution[]).map((inst) => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst.name} ({inst.type}) · Load: {inst.current_load}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600/80 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-all border border-blue-500/40 shadow-sm shadow-blue-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    Dispatch
-                  </button>
-                </form>
-              )}
-
-              {/* Re-dispatch routed tickets too */}
-              {ticket.status === 'routed' && (
-                <form action={async (formData: FormData) => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const instId = formData.get('institution_id') as string
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const body: Record<string, unknown> = {}
-                    if (instId) body.institution_id = parseInt(instId, 10)
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(body)
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }} className="flex items-center gap-2 flex-wrap">
-                  <select name="institution_id" className="bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-w-[220px]">
-                    <option value="">Reassign...</option>
-                    {(institutions as Institution[]).map((inst) => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst.name} ({inst.type})
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600/80 text-white text-sm font-semibold rounded-xl hover:bg-indigo-600 transition-all border border-indigo-500/40">
-                    Reassign
-                  </button>
-                </form>
-              )}
-
-              {/* Verify button — shown when institution submitted proof (piloting status) */}
-              {ticket.status === 'piloting' && (
-                <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/verify`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}` }
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }}>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600/80 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    Verify Completion
-                  </button>
-                </form>
-              )}
-
-              {/* Close Ticket */}
-              {(ticket.status === 'verified' || ticket.status === 'accepted' || ticket.status === 'in_progress') && (
-                <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/close`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}` }
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }}>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700/80 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-all border border-slate-500/40">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    Close Ticket
-                  </button>
-                </form>
-              )}
-            </div>
-
-            {/* Timeline */}
-            {ticket.events?.length > 0 && (
-              <div className="mt-5 border-t border-white/5 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">History</h4>
-                <ul className="text-xs text-slate-500 flex flex-col gap-1.5">
-                  {ticket.events.map((event: TicketEvent, i: number) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 shrink-0" />
-                      <span>
-                        <span className="font-semibold text-slate-400">{String(event.type).replace(/_/g, ' ')}</span>
-                        {' — '}{new Date(event.time).toLocaleString()}
-                        {event.notes && <span className="text-slate-600">: {event.notes}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ))}
-        {tickets.length === 0 && (
-          <div className="glass-card p-8 text-center text-slate-500">
-            No tickets found.
-          </div>
-        )}
-      </div>
-    </div>
+    <GovernmentDashboardClient
+      tickets={tickets}
+      stats={stats}
+      workload={workload}
+      slaRisk={slaRisk}
+      staleTickets={stale}
+      dispatchTicket={dispatchTicket}
+      assignTicket={assignTicket}
+      closeTicket={closeTicket}
+    />
   )
 }

@@ -4,7 +4,7 @@ import { RateTicket } from './RateTicket'
 interface TicketEvent { type: string; notes: string | null; time: string }
 interface Ticket {
   id: number; title: string; description: string; domain: string | null;
-  status: string; severity_score: number | null; events: TicketEvent[];
+  status: string; severity_score: number | null; events: TicketEvent[]; contact_phone?: string | null;
   proof_media_urls: string[]; completion_notes: string | null;
   assigned_institution_id: number | null;
 }
