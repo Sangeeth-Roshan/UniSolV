@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 
 export function RateTicket({ ticketId }: { ticketId: number }) {
@@ -9,8 +10,13 @@ export function RateTicket({ ticketId }: { ticketId: number }) {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
 
+  const RATING_LABELS = ['', 'Poor', 'Fair', 'Satisfactory', 'Very Good', 'Outstanding Resolution']
+
   const handleSubmit = async () => {
-    if (!score) { setError('Please select a rating'); return }
+    if (!score) {
+      setError('Please select a star rating.')
+      return
+    }
     setSubmitting(true)
     setError('')
     try {
@@ -23,10 +29,10 @@ export function RateTicket({ ticketId }: { ticketId: number }) {
         setSubmitted(true)
       } else {
         const data = await res.json().catch(() => ({}))
-        setError(data.detail || 'Failed to submit rating')
+        setError(data.detail || 'Failed to submit rating.')
       }
     } catch {
-      setError('Network error')
+      setError('Network error while submitting rating.')
     } finally {
       setSubmitting(false)
     }
@@ -34,45 +40,80 @@ export function RateTicket({ ticketId }: { ticketId: number }) {
 
   if (submitted) {
     return (
-      <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-sm text-emerald-300">
-        ⭐ Thank you for your feedback! (Rated {score}/5)
+      <div className="p-4 rounded-xl bg-green-50 border border-green-300 text-xs sm:text-sm text-green-800 flex items-center gap-2.5">
+        <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>
+          <strong>Thank you for verifying!</strong> Your rating ({score}/5) has updated the institution&apos;s state reputation score.
+        </span>
       </div>
     )
   }
 
   return (
-    <div className="border border-orange-500/20 rounded-xl p-4 bg-indigo-500/5 space-y-3">
-      <h4 className="text-sm font-bold text-orange-700">⭐ Rate this Resolution</h4>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => setScore(star)}
-            onMouseEnter={() => setHover(star)}
-            onMouseLeave={() => setHover(0)}
-            className={`text-2xl transition-transform hover:scale-110 ${
-              star <= (hover || score) ? 'text-yellow-400' : 'text-slate-600'
-            }`}
-          >
-            ★
-          </button>
-        ))}
-        {score > 0 && <span className="ml-2 text-sm text-slate-500 self-center">{score}/5</span>}
+    <div className="border border-orange-200/80 rounded-xl p-4 bg-orange-50/40 backdrop-blur-md space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+          <span className="text-amber-500">★</span>
+          <span>Rate Resolution Quality & Citizen Satisfaction</span>
+        </h4>
+        {(hover > 0 || score > 0) && (
+          <span className="text-xs font-semibold text-orange-700 bg-orange-100/80 px-2 py-0.5 rounded-md">
+            {RATING_LABELS[hover || score]} ({hover || score}/5)
+          </span>
+        )}
       </div>
+
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const active = star <= (hover || score)
+          return (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setScore(star)}
+              onMouseEnter={() => setHover(star)}
+              onMouseLeave={() => setHover(0)}
+              className="p-1 focus:outline-none transition-transform hover:scale-125"
+              aria-label={`Rate ${star} star`}
+            >
+              <svg
+                className={`w-6 h-6 transition-colors ${
+                  active ? 'text-amber-400 fill-amber-400' : 'text-slate-300 fill-transparent'
+                }`}
+                stroke="currentColor"
+                strokeWidth={1.5}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                />
+              </svg>
+            </button>
+          )
+        })}
+      </div>
+
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Any comments about the resolution? (optional)"
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-600 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none h-16"
+        placeholder="Provide public feedback on work quality, completion speed, or notes for the department..."
+        rows={2}
+        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-transparent resize-none shadow-sm"
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+
+      {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+
       <button
+        type="button"
         onClick={handleSubmit}
         disabled={submitting || !score}
-        className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-600/80 text-slate-900 text-sm font-semibold rounded-xl hover:bg-orange-600 transition-all border border-orange-500/40 disabled:opacity-50 disabled:pointer-events-none"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-[#138808] hover:bg-green-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting ? 'Submitting...' : 'Submit Rating'}
+        {submitting ? 'Submitting...' : 'Submit Citizen Verification Rating'}
       </button>
     </div>
   )

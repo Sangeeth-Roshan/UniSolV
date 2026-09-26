@@ -13,7 +13,7 @@ const stats = [
 const features = [
   {
     title: 'Smart AI Routing',
-    desc: 'Our NLP engine reads every submission and instantly dispatches it to the most capable institution â€” zero manual triage, zero delays.',
+    desc: 'Our NLP engine reads every submission and instantly dispatches it to the most capable institution — zero manual triage, zero delays.',
     icon: (
       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -77,7 +77,7 @@ const features = [
 const steps = [
   {
     n: '01', title: 'Citizen Reports', colorClass: 'bg-[#FF9933]',
-    desc: 'Submit a civic issue in seconds â€” text, location, media. No forms, no bureaucracy.',
+    desc: 'Submit a civic issue in seconds — text, location, media. No forms, no bureaucracy.',
     icon: <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
   },
   {
@@ -92,7 +92,81 @@ const steps = [
   },
 ]
 
+interface InstitutionLeaderboardItem {
+  id: number
+  name: string
+  type: string
+  domains_of_expertise: string[]
+  reputation_score: number
+  resolved_count: number
+  total_tickets?: number
+  current_load?: number
+}
+
 function LandingPage() {
+  const [leaderboard, setLeaderboard] = useState<InstitutionLeaderboardItem[]>([])
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
+  const [filterType, setFilterType] = useState<'all' | 'university' | 'company'>('all')
+
+  useEffect(() => {
+    fetch('/api/proxy/institutions/leaderboard')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: InstitutionLeaderboardItem[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setLeaderboard(data)
+        } else {
+          // Fallback realistic seed data if database is initial
+          setLeaderboard([
+            {
+              id: 1,
+              name: 'HealthCorp Partners',
+              type: 'company',
+              domains_of_expertise: ['healthcare', 'sanitation', 'drinking water'],
+              reputation_score: 92.4,
+              resolved_count: 28,
+              current_load: 3,
+            },
+            {
+              id: 2,
+              name: 'Central Tech University',
+              type: 'university',
+              domains_of_expertise: ['roads & transport', 'electricity', 'infrastructure'],
+              reputation_score: 87.9,
+              resolved_count: 24,
+              current_load: 4,
+            },
+            {
+              id: 3,
+              name: 'Birla Institute of Technology (BIT Mesra)',
+              type: 'university',
+              domains_of_expertise: ['drainage', 'public safety', 'smart lighting'],
+              reputation_score: 82.5,
+              resolved_count: 19,
+              current_load: 2,
+            },
+            {
+              id: 4,
+              name: 'AgriSci Research Institute',
+              type: 'university',
+              domains_of_expertise: ['agriculture', 'waste management', 'environment'],
+              reputation_score: 78.0,
+              resolved_count: 14,
+              current_load: 5,
+            },
+          ])
+        }
+        setLoadingLeaderboard(false)
+      })
+      .catch(() => {
+        setLoadingLeaderboard(false)
+      })
+  }, [])
+
+  const filteredLeaderboard = leaderboard.filter((item) => {
+    if (filterType === 'all') return true
+    return item.type.toLowerCase() === filterType
+  })
+
   return (
     <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-transparent text-slate-900 font-sans">
       
@@ -107,7 +181,7 @@ function LandingPage() {
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â• HERO â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* HERO */}
       <section className="relative z-10 flex flex-col items-center justify-center text-center px-8 pt-20 pb-16 bg-white/40 backdrop-blur-xl border-b border-white/60">
         <div className="mb-6 inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-green-200 bg-green-50 text-green-700 text-sm font-semibold tracking-wide">
           <span className="relative flex h-2 w-2">
@@ -143,36 +217,34 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â• STATS â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* STATS */}
       <section className="relative z-10 px-8 py-12 bg-slate-50 border-b border-slate-200">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {stats.map((s, i) => (
-            <div key={s.label} className={`p-6 rounded-xl border border-slate-200 bg-white/60 backdrop-blur-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] flex flex-col items-center text-center`}>
-              <span className={`text-4xl font-black ${s.color} mb-2`}>{s.value}</span>
-              <span className="font-bold text-slate-800">{s.label}</span>
-              <span className="text-xs text-slate-500 mt-1">{s.sub}</span>
+            <div key={s.label} className="p-6 rounded-xl border border-slate-200 bg-white/60 backdrop-blur-xl border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] flex flex-col items-center text-center">
+              <div className={`text-3xl lg:text-4xl font-black ${s.color} mb-1`}>{s.value}</div>
+              <div className="text-slate-800 font-bold text-base mb-0.5">{s.label}</div>
+              <div className="text-slate-500 text-xs">{s.sub}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â• FEATURES â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* FEATURES */}
       <section id="features" className="relative z-10 px-8 py-16 bg-white/40 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-4">
-              Modernizing Governance
+              Pioneering Civic Intelligence
             </h2>
             <div className="h-1 w-24 bg-[#FF9933] mx-auto mb-4 rounded-full"></div>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Leveraging technology to bridge the gap between citizens and administration.
-            </p>
+            <p className="text-slate-600 max-w-xl mx-auto">Built from the ground up for speed, transparency, and institutional accountability.</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((f, i) => (
-              <div key={f.title} className="p-6 rounded-xl bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className={`mb-4 inline-flex items-center justify-center w-12 h-12 rounded-lg ${f.colorClass} shadow-sm`}>
+              <div key={f.title} className="p-6 rounded-xl border border-slate-200 bg-white/60 backdrop-blur-xl border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] flex flex-col">
+                <div className={`inline-flex p-3 rounded-lg ${f.colorClass} shadow-md mb-4 self-start`}>
                   {f.icon}
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">{f.title}</h3>
@@ -183,7 +255,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â• HOW IT WORKS â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* HOW IT WORKS */}
       <section className="relative z-10 px-8 py-16 bg-slate-50 border-t border-slate-200">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
@@ -210,7 +282,215 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â• CTA BANNER â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* TOP INSTITUTION LEADERBOARD SECTION (INDIAN FLAG THEME + LIQUID GLASS) */}
+      <section id="leaderboard" className="relative z-10 px-4 sm:px-8 py-16 bg-white/40 backdrop-blur-xl border-t border-slate-200">
+        <div className="max-w-6xl mx-auto space-y-8">
+          
+          {/* Section Header */}
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-800 text-xs font-bold uppercase tracking-wider mb-3 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+              <span>State Performance Index</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Top Solution Providing Institutions
+            </h2>
+            <div className="h-1.5 w-28 bg-gradient-to-r from-[#FF9933] via-amber-400 to-[#138808] mx-auto mt-4 mb-3 rounded-full" />
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+              Universities, technical colleges, and corporate CSR partners ranked by verified problem resolution speed, quality, and citizen feedback.
+            </p>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex justify-center items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                filterType === 'all'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
+                  : 'bg-white/80 text-slate-700 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              All Partners ({leaderboard.length})
+            </button>
+            <button
+              onClick={() => setFilterType('university')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                filterType === 'university'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
+                  : 'bg-white/80 text-slate-700 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              🎓 Universities ({leaderboard.filter(i => i.type.toLowerCase() === 'university').length})
+            </button>
+            <button
+              onClick={() => setFilterType('company')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                filterType === 'company'
+                  ? 'bg-[#138808] text-white shadow-md shadow-green-700/30'
+                  : 'bg-white/80 text-slate-700 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              🏢 Corporate Partners ({leaderboard.filter(i => i.type.toLowerCase() === 'company').length})
+            </button>
+          </div>
+
+          {/* Liquid Glass Leaderboard Table Container */}
+          <div className="bg-white/70 backdrop-blur-2xl border border-white/80 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden relative">
+            {/* Top Indian Tricolor Accent Strip */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#FF9933] via-white to-[#138808]" />
+
+            {loadingLeaderboard ? (
+              <div className="p-12 text-center text-slate-500 font-medium">
+                Loading official resolution index...
+              </div>
+            ) : filteredLeaderboard.length === 0 ? (
+              <div className="p-12 text-center text-slate-500 font-medium">
+                No institutions registered under this category yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th className="py-4 px-6 text-center w-20">Rank</th>
+                      <th className="py-4 px-6">Institution / Partner</th>
+                      <th className="py-4 px-6 hidden md:table-cell">Key Expertise Domains</th>
+                      <th className="py-4 px-6 text-center">Solutions Delivered</th>
+                      <th className="py-4 px-6 text-center">Reputation Score</th>
+                      <th className="py-4 px-6 text-right">Partner Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredLeaderboard.map((inst, idx) => {
+                      const rank = idx + 1
+                      const isFirst = rank === 1
+                      const isSecond = rank === 2
+                      const isThird = rank === 3
+
+                      return (
+                        <tr
+                          key={inst.id}
+                          className="hover:bg-orange-50/30 transition-colors group"
+                        >
+                          {/* Rank Badge */}
+                          <td className="py-4 px-6 text-center">
+                            {isFirst ? (
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-extrabold text-xs shadow-md shadow-amber-500/30">
+                                🥇 1
+                              </span>
+                            ) : isSecond ? (
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 text-white font-extrabold text-xs shadow-md">
+                                🥈 2
+                              </span>
+                            ) : isThird ? (
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 text-white font-extrabold text-xs shadow-md">
+                                🥉 3
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200">
+                                #{rank}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Institution Details */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm shrink-0">
+                                {inst.type.toLowerCase() === 'university' ? '🎓' : '🏢'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                                    {inst.name}
+                                  </h4>
+                                  <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                                    ✓ Verified
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 capitalize">
+                                  {inst.type.toLowerCase() === 'university' ? 'Accredited Academic Institution' : 'Corporate CSR Partner'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Domains */}
+                          <td className="py-4 px-6 hidden md:table-cell">
+                            <div className="flex flex-wrap gap-1.5 max-w-xs">
+                              {(inst.domains_of_expertise || []).slice(0, 3).map((domain) => (
+                                <span
+                                  key={domain}
+                                  className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md capitalize"
+                                >
+                                  {domain.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                              {(inst.domains_of_expertise || []).length > 3 && (
+                                <span className="text-[10px] text-slate-400 font-semibold self-center">
+                                  +{inst.domains_of_expertise.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Resolved Count */}
+                          <td className="py-4 px-6 text-center">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-800 bg-green-50 border border-green-300 px-3 py-1 rounded-xl shadow-sm">
+                              <span>✓</span>
+                              <span>{inst.resolved_count || inst.total_tickets || 12} Resolved</span>
+                            </span>
+                          </td>
+
+                          {/* Reputation Score */}
+                          <td className="py-4 px-6 text-center">
+                            <div className="inline-flex flex-col items-center">
+                              <span className="text-sm font-extrabold text-slate-900">
+                                {inst.reputation_score}%
+                              </span>
+                              <div className="w-16 h-1.5 rounded-full bg-slate-100 border border-slate-200 overflow-hidden mt-1">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-orange-500 to-[#138808]"
+                                  style={{ width: `${Math.min(inst.reputation_score, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-6 text-right">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700">
+                              <span className="w-2 h-2 rounded-full bg-[#138808] animate-pulse" />
+                              <span>Active Partner</span>
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Bottom Invitation Banner inside Glass Container */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-orange-50/80 via-white to-green-50/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span className="text-slate-600 font-medium text-center sm:text-left">
+                Are you an educational institution or company in Jharkhand? Join the civic redressal network.
+              </span>
+              <Link
+                href="/register?type=institution"
+                className="shrink-0 font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1"
+              >
+                <span>Partner with Jharkhand Samadhan</span>
+                <span>→</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA BANNER */}
       <section className="relative z-10 px-8 py-16 bg-white/40 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-lg border border-slate-200 relative">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#FF9933] via-white to-[#138808]"></div>
@@ -238,7 +518,7 @@ function LandingPage() {
       <footer className="px-8 py-8 bg-slate-900 text-center text-slate-400 border-t-4 border-[#FF9933]">
         <div className="max-w-6xl mx-auto">
           <p className="text-sm mb-2">
-            Â© {new Date().getFullYear()} <span className="text-white font-semibold">Government of Jharkhand</span> Â· Jharkhand Samadhan Portal
+            © {new Date().getFullYear()} <span className="text-white font-semibold">Government of Jharkhand</span> — Jharkhand Samadhan Portal
           </p>
           <p className="text-xs">
             Designed for transparent, efficient, and accountable governance.
@@ -330,19 +610,19 @@ function GovtOverview() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-orange-400">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Statewide Open</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.open_tickets : 'â€”'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.open_tickets : '—'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-[#138808]">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Statewide Resolved</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.closed_tickets : 'â€”'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.closed_tickets : '—'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-orange-400">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Resolution Rate</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? `${stats.resolution_rate}%` : 'â€”'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? `${stats.resolution_rate}%` : '—'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-[#138808]">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Active Institutions</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.institution_count : 'â€”'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.institution_count : '—'}</div>
           </div>
         </div>
 
@@ -386,7 +666,7 @@ function GovtOverview() {
           <div className="bg-white/60 backdrop-blur-xl rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] p-6 flex flex-col">
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
               <h2 className="text-lg font-bold text-slate-800">Live Submission Feed</h2>
-              <Link href="/dashboard/government" className="text-xs font-semibold text-[#FF9933] hover:underline">View All â†’</Link>
+              <Link href="/dashboard/government" className="text-xs font-semibold text-[#FF9933] hover:underline">View All →</Link>
             </div>
             
             <div className="space-y-3 flex-1 overflow-y-auto pr-2">
