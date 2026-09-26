@@ -17,6 +17,7 @@ from app.models.institution import Institution
 from app.models.issue_cluster import IssueCluster
 from app.models.ticket import Ticket
 from app.models.ticket_event import TicketEvent
+from app.models.attribution import Attribution
 
 from app.services.clustering.ticket_cluster_service import process_new_ticket
 from app.services.routing.escalation_engine import dispatch_ticket, check_sla_breaches
@@ -165,7 +166,23 @@ async def seed():
                 sess.add(TicketEvent(ticket_id=t.id, event_type=EventType.accepted, created_at=t.created_at + timedelta(hours=1), notes="Accepted by inst"))
                 
                 t.status = TicketStatus.closed
+                t.completion_notes = f"Issue addressed on-site. Necessary infrastructure repairs and community follow-up completed."
                 sess.add(TicketEvent(ticket_id=t.id, event_type=EventType.closed, created_at=t.created_at + timedelta(hours=48), notes="Resolved"))
+
+                # Add worker credits attribution
+                demo_workers = [
+                    {"name": "Prof. R. Narayan", "role": "Faculty Supervisor"},
+                    {"name": "Aditi Roy", "role": "Student Lead"},
+                    {"name": "Dev Sharma", "role": "Field Technician"},
+                ]
+                attr = Attribution(
+                    ticket_id=t.id,
+                    reporter_id=t.reporter_id,
+                    institution_id=t.assigned_institution_id,
+                    worker_credits=demo_workers,
+                    notes="Completed through academic civic-engagement initiative.",
+                )
+                sess.add(attr)
                 
                 inst = await sess.get(Institution, t.assigned_institution_id)
                 if inst and (inst.current_load or 0) > 0:

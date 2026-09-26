@@ -1,241 +1,239 @@
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { TicketCard, TicketData } from '@/components/TicketCard'
 
-interface TicketEvent { type: string; notes: string | null; time: string }
-interface Institution { id: number; name: string; type: string; domains_of_expertise: string[]; reputation_score: number; current_load: number }
-interface Ticket {
-  id: number; title: string; description: string; domain: string | null;
-  status: string; severity_score: number | null; events: TicketEvent[];
-  assigned_institution_id: number | null; assigned_institution_name: string | null;
-  proof_media_urls: string[]; completion_notes: string | null; created_at: string;
+interface Institution {
+  id: number
+  name: string
+  type: string
+  domains_of_expertise: string[]
+  reputation_score: number
+  current_load: number
 }
 
-function statusBadge(status: string) {
-  const styles: Record<string, string> = {
-    pending_validation: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-    routed:             'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-    accepted:           'bg-violet-500/20 text-violet-300 border border-violet-500/30',
-    in_progress:        'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
-    piloting:           'bg-teal-500/20 text-teal-300 border border-teal-500/30',
-    verified:           'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-    closed:             'bg-slate-500/20 text-slate-400 border border-slate-500/30',
-    escalated:          'bg-red-500/20 text-red-300 border border-red-500/30',
-  }
-  return styles[status] ?? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-}
-
-async function getData() {
+async function getData(): Promise<{ tickets: TicketData[]; institutions: Institution[] }> {
   const token = cookies().get('token')?.value
   if (!token) return { tickets: [], institutions: [] }
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
   try {
     const [ticketsRes, institutionsRes] = await Promise.all([
-      fetch(`${backendUrl}/api/tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
-      fetch(`${backendUrl}/api/institutions`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+      fetch(`${backendUrl}/api/tickets`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      }),
+      fetch(`${backendUrl}/api/institutions`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      }),
     ])
     const tickets = ticketsRes.ok ? await ticketsRes.json() : []
     const institutions = institutionsRes.ok ? await institutionsRes.json() : []
     return { tickets, institutions }
-  } catch { return { tickets: [], institutions: [] } }
+  } catch {
+    return { tickets: [], institutions: [] }
+  }
 }
 
 export default async function GovernmentDashboardPage() {
   const { tickets, institutions } = await getData()
 
+  const pendingDispatch = tickets.filter((t) => t.status === 'pending_validation').length
+  const awaitingVerification = tickets.filter((t) => t.status === 'piloting').length
+  const activeFieldWork = tickets.filter((t) => ['routed', 'accepted', 'in_progress'].includes(t.status)).length
+  const resolvedCount = tickets.filter((t) => ['verified', 'closed'].includes(t.status)).length
+
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="page-title">Government Dashboard</h1>
-        <p className="page-subtitle">All civic tickets — assign to institutions, verify completions, and close resolved issues.</p>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* ── Page Header ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="page-title">Government Civic Operations</h1>
+          <p className="page-subtitle">
+            City-wide issue monitoring, academic/corporate partner dispatching, and resolution verification.
+          </p>
+        </div>
+
+        {tickets.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs px-3 py-1.5 rounded-full bg-slate-800/80 border border-white/10 text-slate-300 font-medium">
+              <span className="text-white font-bold">{tickets.length}</span> Total
+            </span>
+            {pendingDispatch > 0 && (
+              <span className="text-xs px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 font-medium">
+                <span className="font-bold">{pendingDispatch}</span> Needs Dispatch
+              </span>
+            )}
+            {awaitingVerification > 0 && (
+              <span className="text-xs px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-300 font-medium">
+                <span className="font-bold">{awaitingVerification}</span> Ready for Verification
+              </span>
+            )}
+            <span className="text-xs px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 font-medium">
+              <span className="font-bold">{activeFieldWork}</span> Active
+            </span>
+            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-medium">
+              <span className="font-bold">{resolvedCount}</span> Resolved
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-4">
-        {(tickets as Ticket[]).map((ticket) => (
-          <div key={ticket.id} className="glass-card p-5">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
-                  <span className="text-xs text-slate-600">#{ticket.id}</span>
-                </div>
-                <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{ticket.description}</p>
-                <div className="mt-2 flex items-center gap-3 flex-wrap">
-                  {ticket.domain && (
-                    <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
-                      {ticket.domain}
-                    </span>
-                  )}
-                  {ticket.severity_score != null && (
-                    <span className="text-xs text-slate-500">
-                      Severity: <span className="text-slate-300">{Number(ticket.severity_score).toFixed(2)}</span>
-                    </span>
-                  )}
-                  {ticket.assigned_institution_name && (
-                    <span className="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded">
-                      🏛 {ticket.assigned_institution_name}
-                    </span>
-                  )}
-                </div>
+      {/* ── Tickets List ────────────────────────────────────────────────────── */}
+      <div className="space-y-5">
+        {tickets.map((ticket) => (
+          <TicketCard
+            key={ticket.id}
+            ticket={ticket}
+            viewMode="government"
+            actionsSlot={
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Dispatch Form (Auto or Manual) */}
+                {(ticket.status === 'pending_validation' || ticket.status === 'escalated') && (
+                  <form
+                    action={async (formData: FormData) => {
+                      'use server'
+                      const t = cookies().get('token')?.value
+                      const instId = formData.get('institution_id') as string
+                      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                      try {
+                        const body: Record<string, unknown> = {}
+                        if (instId) body.institution_id = parseInt(instId, 10)
+                        const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify(body),
+                        })
+                        if (res.ok) revalidatePath('/dashboard/government')
+                      } catch {}
+                    }}
+                    className="flex items-center gap-2 flex-wrap"
+                  >
+                    <select
+                      name="institution_id"
+                      className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-w-[240px]"
+                    >
+                      <option value="">🤖 AI Auto-Assign (Recommended)</option>
+                      {institutions.map((inst) => (
+                        <option key={inst.id} value={inst.id}>
+                          {inst.name} ({inst.type}) · Load: {inst.current_load}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-600/20 transition-all border border-blue-500/30"
+                    >
+                      <span>🚀</span>
+                      <span>Dispatch</span>
+                    </button>
+                  </form>
+                )}
+
+                {/* Reassign Form */}
+                {ticket.status === 'routed' && (
+                  <form
+                    action={async (formData: FormData) => {
+                      'use server'
+                      const t = cookies().get('token')?.value
+                      const instId = formData.get('institution_id') as string
+                      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                      try {
+                        const body: Record<string, unknown> = {}
+                        if (instId) body.institution_id = parseInt(instId, 10)
+                        const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify(body),
+                        })
+                        if (res.ok) revalidatePath('/dashboard/government')
+                      } catch {}
+                    }}
+                    className="flex items-center gap-2 flex-wrap"
+                  >
+                    <select
+                      name="institution_id"
+                      className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500/50 max-w-[240px]"
+                    >
+                      <option value="">Reassign to Partner...</option>
+                      {institutions.map((inst) => (
+                        <option key={inst.id} value={inst.id}>
+                          {inst.name} ({inst.type})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all border border-indigo-500/30"
+                    >
+                      <span>Reassign</span>
+                    </button>
+                  </form>
+                )}
+
+                {/* Verify Completion Button — shown when piloting */}
+                {ticket.status === 'piloting' && (
+                  <form
+                    action={async () => {
+                      'use server'
+                      const t = cookies().get('token')?.value
+                      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                      try {
+                        const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/verify`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${t}` },
+                        })
+                        if (res.ok) revalidatePath('/dashboard/government')
+                      } catch {}
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/20 transition-all border border-emerald-500/30"
+                    >
+                      <span>✅</span>
+                      <span>Verify & Approve Completion</span>
+                    </button>
+                  </form>
+                )}
+
+                {/* Close Ticket */}
+                {(ticket.status === 'verified' || ticket.status === 'accepted' || ticket.status === 'in_progress') && (
+                  <form
+                    action={async () => {
+                      'use server'
+                      const t = cookies().get('token')?.value
+                      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+                      try {
+                        const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/close`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${t}` },
+                        })
+                        if (res.ok) revalidatePath('/dashboard/government')
+                      } catch {}
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl transition-all border border-white/10"
+                    >
+                      <span>Archive / Close</span>
+                    </button>
+                  </form>
+                )}
               </div>
-              <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(ticket.status)}`}>
-                {ticket.status.replace(/_/g, ' ')}
-              </span>
-            </div>
-
-            {/* Proof of completion */}
-            {ticket.completion_notes && (
-              <div className="mt-3 p-3 rounded-lg bg-teal-500/5 border border-teal-500/20">
-                <p className="text-xs font-bold text-teal-400 mb-1">📋 Completion Notes</p>
-                <p className="text-sm text-slate-300">{ticket.completion_notes}</p>
-              </div>
-            )}
-            {ticket.proof_media_urls && ticket.proof_media_urls.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs font-bold text-emerald-400 mb-2">📸 Proof of Completion ({ticket.proof_media_urls.length} file{ticket.proof_media_urls.length !== 1 ? 's' : ''})</p>
-                <div className="flex flex-wrap gap-2">
-                  {ticket.proof_media_urls.map((url, i) => (
-                    <a key={i} href={`http://localhost:8000/${url}`} target="_blank" rel="noopener noreferrer"
-                       className="inline-flex items-center gap-1 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded hover:bg-emerald-500/20 transition-colors">
-                      📎 File {i + 1}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 mt-4 flex-wrap items-end">
-              {/* Dispatch with institution picker */}
-              {(ticket.status === 'pending_validation' || ticket.status === 'escalated') && (
-                <form action={async (formData: FormData) => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const instId = formData.get('institution_id') as string
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const body: Record<string, unknown> = {}
-                    if (instId) body.institution_id = parseInt(instId, 10)
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(body)
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }} className="flex items-center gap-2 flex-wrap">
-                  <select name="institution_id" className="bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-w-[220px]">
-                    <option value="">AI Auto-assign</option>
-                    {(institutions as Institution[]).map((inst) => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst.name} ({inst.type}) · Load: {inst.current_load}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600/80 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-all border border-blue-500/40 shadow-sm shadow-blue-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    Dispatch
-                  </button>
-                </form>
-              )}
-
-              {/* Re-dispatch routed tickets too */}
-              {ticket.status === 'routed' && (
-                <form action={async (formData: FormData) => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const instId = formData.get('institution_id') as string
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const body: Record<string, unknown> = {}
-                    if (instId) body.institution_id = parseInt(instId, 10)
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/dispatch`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(body)
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }} className="flex items-center gap-2 flex-wrap">
-                  <select name="institution_id" className="bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-w-[220px]">
-                    <option value="">Reassign...</option>
-                    {(institutions as Institution[]).map((inst) => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst.name} ({inst.type})
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600/80 text-white text-sm font-semibold rounded-xl hover:bg-indigo-600 transition-all border border-indigo-500/40">
-                    Reassign
-                  </button>
-                </form>
-              )}
-
-              {/* Verify button — shown when institution submitted proof (piloting status) */}
-              {ticket.status === 'piloting' && (
-                <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/verify`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}` }
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }}>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600/80 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    Verify Completion
-                  </button>
-                </form>
-              )}
-
-              {/* Close Ticket */}
-              {(ticket.status === 'verified' || ticket.status === 'accepted' || ticket.status === 'in_progress') && (
-                <form action={async () => {
-                  'use server'
-                  const t = cookies().get('token')?.value
-                  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-                  try {
-                    const res = await fetch(`${backendUrl}/api/tickets/${ticket.id}/close`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${t}` }
-                    })
-                    if (res.ok) revalidatePath('/dashboard/government')
-                  } catch {}
-                }}>
-                  <button type="submit" className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700/80 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-all border border-slate-500/40">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    Close Ticket
-                  </button>
-                </form>
-              )}
-            </div>
-
-            {/* Timeline */}
-            {ticket.events?.length > 0 && (
-              <div className="mt-5 border-t border-white/5 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">History</h4>
-                <ul className="text-xs text-slate-500 flex flex-col gap-1.5">
-                  {ticket.events.map((event: TicketEvent, i: number) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 shrink-0" />
-                      <span>
-                        <span className="font-semibold text-slate-400">{String(event.type).replace(/_/g, ' ')}</span>
-                        {' — '}{new Date(event.time).toLocaleString()}
-                        {event.notes && <span className="text-slate-600">: {event.notes}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+            }
+          />
         ))}
+
         {tickets.length === 0 && (
-          <div className="glass-card p-8 text-center text-slate-500">
-            No tickets found.
+          <div className="glass-card rounded-2xl p-12 text-center space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-2xl">
+              🏙️
+            </div>
+            <h3 className="text-base font-semibold text-white">No Tickets Found</h3>
+            <p className="text-sm text-slate-400 max-w-md mx-auto">
+              There are currently no civic reports in the queue. New reports submitted by citizens will appear here.
+            </p>
           </div>
         )}
       </div>

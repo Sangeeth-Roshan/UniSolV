@@ -191,6 +191,7 @@ async def get_tickets(
     query = select(Ticket).options(
         selectinload(Ticket.events),
         selectinload(Ticket.assigned_institution),
+        selectinload(Ticket.attributions),
     )
     if current_user.role == UserRole.citizen:
         query = query.where(Ticket.reporter_id == current_user.id)
@@ -201,6 +202,12 @@ async def get_tickets(
     result = await db.execute(query.order_by(Ticket.created_at.desc()))
     tickets = result.scalars().all()
 
+    def _worker_credits(t: Ticket) -> list:
+        """Return worker_credits from the first attribution record, or empty list."""
+        if t.attributions:
+            return t.attributions[0].worker_credits or []
+        return []
+
     return [
         {
             "id": t.id,
@@ -210,9 +217,13 @@ async def get_tickets(
             "status": t.status,
             "severity_score": t.severity_score,
             "assigned_institution_id": t.assigned_institution_id,
+            "assigned_institution_name": t.assigned_institution.name if t.assigned_institution else None,
+            "media_urls": t.media_urls or [],
             "proof_media_urls": t.proof_media_urls,
             "completion_notes": t.completion_notes,
+            "sla_deadline": t.sla_deadline,
             "created_at": t.created_at,
+            "worker_credits": _worker_credits(t),
             "events": [
                 {"type": e.event_type, "notes": e.notes, "time": e.created_at}
                 for e in t.events
