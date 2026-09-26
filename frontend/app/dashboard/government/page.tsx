@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import GovernmentDashboardClient from './GovernmentDashboardClient'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface TicketEvent { type: string; notes: string | null; time: string | null }
 export interface AssignedInstitution {
   id: number; name: string; type: string
@@ -54,7 +54,7 @@ export interface StaleTicket {
   sla_hours_remaining: number | null
 }
 
-// ── Data fetchers ──────────────────────────────────────────────────────────────
+// â”€â”€ Data fetchers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const B = () => process.env.BACKEND_URL || 'http://localhost:8000'
 
 async function getToken() { return cookies().get('token')?.value }
@@ -62,7 +62,7 @@ async function getToken() { return cookies().get('token')?.value }
 async function getTickets(): Promise<Ticket[]> {
   const token = await getToken(); if (!token) return []
   try {
-    const res = await fetch(`${B()}/api/tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const res = await fetch(`${B()}/api/tickets`, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 5 } })
     return res.ok ? res.json() : []
   } catch { return [] }
 }
@@ -70,7 +70,7 @@ async function getTickets(): Promise<Ticket[]> {
 async function getSummary(): Promise<Summary | null> {
   const token = await getToken(); if (!token) return null
   try {
-    const res = await fetch(`${B()}/api/analytics/summary`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const res = await fetch(`${B()}/api/analytics/summary`, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 5 } })
     return res.ok ? res.json() : null
   } catch { return null }
 }
@@ -78,7 +78,7 @@ async function getSummary(): Promise<Summary | null> {
 async function getInstitutionWorkload(): Promise<InstitutionWorkload[]> {
   const token = await getToken(); if (!token) return []
   try {
-    const res = await fetch(`${B()}/api/analytics/institution-workload`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const res = await fetch(`${B()}/api/analytics/institution-workload`, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 5 } })
     return res.ok ? res.json() : []
   } catch { return [] }
 }
@@ -86,7 +86,7 @@ async function getInstitutionWorkload(): Promise<InstitutionWorkload[]> {
 async function getSlaRisk(): Promise<SlaRisk | null> {
   const token = await getToken(); if (!token) return null
   try {
-    const res = await fetch(`${B()}/api/analytics/sla-risk`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const res = await fetch(`${B()}/api/analytics/sla-risk`, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 5 } })
     return res.ok ? res.json() : null
   } catch { return null }
 }
@@ -94,12 +94,12 @@ async function getSlaRisk(): Promise<SlaRisk | null> {
 async function getStaleTickets(): Promise<StaleTicket[]> {
   const token = await getToken(); if (!token) return []
   try {
-    const res = await fetch(`${B()}/api/analytics/stale-tickets`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const res = await fetch(`${B()}/api/analytics/stale-tickets`, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 5 } })
     return res.ok ? res.json() : []
   } catch { return [] }
 }
 
-// ── Server actions ─────────────────────────────────────────────────────────────
+// â”€â”€ Server actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function dispatchTicket(ticketId: number) {
   'use server'
   const token = cookies().get('token')?.value
@@ -135,7 +135,7 @@ async function closeTicket(ticketId: number) {
   } catch {}
 }
 
-// ── Fallback summary from ticket list ─────────────────────────────────────────
+// â”€â”€ Fallback summary from ticket list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function computeSummaryFallback(tickets: Ticket[]): Summary {
   const total = tickets.length
   const openStatuses = new Set(['pending_validation', 'routed', 'accepted', 'in_progress', 'piloting'])
@@ -160,7 +160,7 @@ function computeSummaryFallback(tickets: Ticket[]): Summary {
   }
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default async function GovernmentDashboardPage() {
   const [tickets, summary, workload, slaRisk, stale] = await Promise.all([
     getTickets(), getSummary(), getInstitutionWorkload(), getSlaRisk(), getStaleTickets()

@@ -292,12 +292,17 @@ async def get_institution_workload(
     now = datetime.now(timezone.utc)
     results = []
 
+    # Fetch all assigned tickets in a single query to eliminate N+1 latency
+    all_tickets_q = await db.execute(select(Ticket).where(Ticket.assigned_institution_id.isnot(None)))
+    all_assigned_tickets = all_tickets_q.scalars().all()
+
+    inst_tickets_map: Dict[int, List[Ticket]] = {}
+    for t in all_assigned_tickets:
+        if t.assigned_institution_id is not None:
+            inst_tickets_map.setdefault(t.assigned_institution_id, []).append(t)
+
     for inst in institutions:
-        # Tickets assigned to this institution
-        t_q = await db.execute(
-            select(Ticket).where(Ticket.assigned_institution_id == inst.id)
-        )
-        tickets = t_q.scalars().all()
+        tickets = inst_tickets_map.get(inst.id, [])
 
         status_counts: Dict[str, int] = {}
         sla_breached = 0

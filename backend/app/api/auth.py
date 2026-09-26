@@ -22,6 +22,7 @@ class RegisterRequest(BaseModel):
     name: str
     email: str
     password: str
+    phone: str | None = None
 
 
 @router.post("/register")
@@ -39,6 +40,7 @@ async def register(
         email=body.email,
         password_hash=get_password_hash(body.password),
         role=UserRole.citizen,
+        phone=body.phone,
     )
     db.add(user)
     await db.commit()

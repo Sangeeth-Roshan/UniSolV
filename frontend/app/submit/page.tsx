@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   ssr: false,
   loading: () => (
-    <div className="h-[300px] w-full rounded-xl bg-slate-900/50 border border-white/10 flex flex-col items-center justify-center text-slate-500 animate-pulse">
+    <div className="h-[300px] w-full rounded-xl bg-slate-100/50 border border-slate-300 flex flex-col items-center justify-center text-slate-500 animate-pulse">
       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
       </svg>
@@ -375,15 +375,18 @@ export default function SubmitPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto pb-12">
+    <div className="max-w-3xl mx-auto pb-12 relative z-10">
+<div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center opacity-[0.03]">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Ashoka_Chakra.svg" alt="Ashoka Chakra" className="w-[800px] h-[800px]" />
+</div>
       <div className="mb-10 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/20 mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-xl shadow-orange-500/20 mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </div>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight mb-3">Report a Civic Issue</h1>
-        <p className="text-slate-400 max-w-xl mx-auto text-base">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">Report a Civic Issue</h1>
+        <p className="text-slate-600 max-w-xl mx-auto text-base">
           Help improve your community in Jharkhand. Describe the problem in Hindi or English, mark the location, and our AI will route it to the exact department responsible.
         </p>
       </div>
@@ -403,69 +406,69 @@ export default function SubmitPage() {
 
       {/* ── Success State ── */}
       {submitResult ? (
-        <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-10 text-center animate-fade-in-up">
-          <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30 mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+        <div className="rounded-3xl bg-white border border-slate-200 p-10 text-center animate-fade-in-up">
+          <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-2xl shadow-green-500/30 mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-3xl font-extrabold text-white mb-3">Ticket #{submitResult.ticket_id} Submitted!</h2>
-          <p className="text-slate-400 max-w-md mx-auto mb-8">
+          <h2 className="text-3xl font-extrabold text-slate-900 mb-3">Ticket #{submitResult.ticket_id} Submitted!</h2>
+          <p className="text-slate-600 max-w-md mx-auto mb-8">
             Your issue has been successfully logged and processed by the AI routing system.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-4 text-left max-w-lg mx-auto mb-10">
-            <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/5">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Assigned Domain</div>
-              <div className="font-semibold text-emerald-400">{submitResult.domain || 'Processing...'}</div>
+              <div className="font-semibold text-green-700">{submitResult.domain || 'Processing...'}</div>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/5">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cluster / Impact</div>
-              <div className="font-semibold text-white">{submitResult.cluster_id ? `#${submitResult.cluster_id} (Hotspot)` : 'Isolated Issue'}</div>
+              <div className="font-semibold text-slate-900">{submitResult.cluster_id ? `#${submitResult.cluster_id} (Hotspot)` : 'Isolated Issue'}</div>
             </div>
 
             {/* Bilingual Voice Interpretation in Success Screen */}
             {(submitResult.transcription_english || submitResult.transcription_hindi || submitResult.transcription) && (
-              <div className="col-span-2 p-4 rounded-2xl bg-slate-950/60 border border-indigo-500/20 space-y-2.5">
+              <div className="col-span-2 p-4 rounded-2xl bg-white border border-orange-200 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-orange-600 uppercase tracking-widest flex items-center gap-1.5">
                     <span>🎙️</span> Bilingual Voice Interpretation
                   </span>
-                  <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">AI Interpreted</span>
+                  <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">AI Interpreted</span>
                 </div>
 
                 {submitResult.transcription_english && (
-                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
-                    <span className="text-xs font-semibold text-indigo-300 block mb-0.5">🇬🇧 English Translation:</span>
-                    <span className="text-slate-200">{submitResult.transcription_english}</span>
+                  <div className="text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span className="text-xs font-semibold text-orange-700 block mb-0.5">🇬🇧 English Translation:</span>
+                    <span className="text-slate-800">{submitResult.transcription_english}</span>
                   </div>
                 )}
 
                 {submitResult.transcription_hindi && (
-                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
-                    <span className="text-xs font-semibold text-emerald-300 block mb-0.5">🇮🇳 हिन्दी अनुवाद (Hindi):</span>
-                    <span className="text-slate-200">{submitResult.transcription_hindi}</span>
+                  <div className="text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span className="text-xs font-semibold text-green-800 block mb-0.5">🇮🇳 हिन्दी अनुवाद (Hindi):</span>
+                    <span className="text-slate-800">{submitResult.transcription_hindi}</span>
                   </div>
                 )}
 
                 {!submitResult.transcription_english && !submitResult.transcription_hindi && submitResult.transcription && (
-                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
-                    <span className="text-xs font-semibold text-slate-400 block mb-0.5">Voice Transcription:</span>
-                    <span className="text-slate-300 font-mono">&quot;{submitResult.transcription}&quot;</span>
+                  <div className="text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span className="text-xs font-semibold text-slate-600 block mb-0.5">Voice Transcription:</span>
+                    <span className="text-slate-700 font-mono">&quot;{submitResult.transcription}&quot;</span>
                   </div>
                 )}
               </div>
             )}
 
             {submitResult.contact_phone && (
-              <div className="col-span-2 p-4 rounded-2xl bg-slate-950/60 border border-indigo-500/20 flex items-center justify-between">
+              <div className="col-span-2 p-4 rounded-2xl bg-white border border-orange-200 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
                     <span>📱</span> Citizen Contact Number
                   </div>
-                  <div className="font-semibold text-indigo-300 font-mono text-sm">{submitResult.contact_phone}</div>
+                  <div className="font-semibold text-orange-700 font-mono text-sm">{submitResult.contact_phone}</div>
                 </div>
-                <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full font-medium">
+                <span className="text-[11px] text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full font-medium">
                   Attached to Ticket
                 </span>
               </div>
@@ -473,10 +476,10 @@ export default function SubmitPage() {
           </div>
 
           <div className="flex justify-center gap-4">
-            <a href="/my-tickets" className="px-6 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 transition-colors">
+            <a href="/my-tickets" className="px-6 py-3 rounded-xl bg-slate-100 text-slate-900 font-semibold hover:bg-slate-700 transition-colors">
               Track Status
             </a>
-            <button onClick={resetForm} className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold shadow-lg shadow-indigo-500/25 hover:scale-105 transition-all">
+            <button onClick={resetForm} className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-green-600 text-slate-900 font-bold shadow-lg shadow-indigo-500/25 hover:scale-105 transition-all">
               Submit Another
             </button>
           </div>
@@ -484,11 +487,11 @@ export default function SubmitPage() {
       ) : (
         /* ── Submission Form ── */
         <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-xl">
+          <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl">
             <div className="space-y-6">
               {/* Title */}
               <div>
-                <label className="flex text-sm font-bold text-white mb-2">
+                <label className="flex text-sm font-bold text-slate-900 mb-2">
                   Issue Title <span className="text-red-400 ml-1">*</span>
                 </label>
                 <input
@@ -496,25 +499,25 @@ export default function SubmitPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Broken water pipe on Main Road, Ranchi causing flooding"
-                  className={`w-full bg-slate-950 border ${
-                    errors.title ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'
-                  } rounded-xl px-5 py-3.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all`}
+                  className={`w-full bg-slate-50 border ${
+                    errors.title ? 'border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-orange-500 focus:ring-orange-500/50'
+                  } rounded-xl px-5 py-3.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all`}
                 />
                 {errors.title && <p className="mt-2 text-sm text-red-400">{errors.title}</p>}
               </div>
 
               {/* Description */}
               <div>
-                <label className="flex text-sm font-bold text-white mb-2">
+                <label className="flex text-sm font-bold text-slate-900 mb-2">
                   Detailed Description <span className="text-red-400 ml-1">*</span>
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe the issue in detail (location landmarks, severity, what happened). You can also speak using the Voice Note below to auto-fill this in Hindi & English..."
-                  className={`w-full bg-slate-950 border ${
-                    errors.description ? 'border-red-500 focus:ring-red-500/50' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/50'
-                  } rounded-xl px-5 py-3.5 h-32 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 transition-all resize-none`}
+                  className={`w-full bg-slate-50 border ${
+                    errors.description ? 'border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-orange-500 focus:ring-orange-500/50'
+                  } rounded-xl px-5 py-3.5 h-32 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all resize-none`}
                 />
                 {errors.description && <p className="mt-2 text-sm text-red-400">{errors.description}</p>}
               </div>
@@ -522,20 +525,20 @@ export default function SubmitPage() {
               {/* Citizen Contact Mobile Number */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="flex text-sm font-bold text-white items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <label className="flex text-sm font-bold text-slate-900 items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                     <span>Contact Mobile Number / संपर्क मोबाइल नंबर</span>
                     <span className="text-red-400 ml-1">*</span>
                   </label>
-                  <span className="text-[11px] text-slate-400">For updates & verification</span>
+                  <span className="text-[11px] text-slate-600">For updates & verification</span>
                 </div>
 
-                <div className={`flex rounded-xl overflow-hidden border transition-all focus-within:ring-2 bg-slate-950 ${
-                  errors.phone ? 'border-red-500 focus-within:ring-red-500/50' : 'border-white/10 focus-within:border-indigo-500/50 focus-within:ring-indigo-500/50'
+                <div className={`flex rounded-xl overflow-hidden border transition-all focus-within:ring-2 bg-slate-50 ${
+                  errors.phone ? 'border-red-500 focus-within:ring-red-500/50' : 'border-slate-300 focus-within:border-orange-500 focus-within:ring-orange-500/50'
                 }`}>
-                  <div className="flex items-center gap-1.5 px-3.5 bg-slate-900 border-r border-white/10 text-slate-300 font-semibold text-sm select-none shrink-0">
+                  <div className="flex items-center gap-1.5 px-3.5 bg-slate-100 border-r border-slate-300 text-slate-700 font-semibold text-sm select-none shrink-0">
                     <span>🇮🇳</span>
                     <span>+91</span>
                   </div>
@@ -549,7 +552,7 @@ export default function SubmitPage() {
                     }}
                     placeholder="e.g. 98765 43210"
                     maxLength={14}
-                    className="w-full bg-transparent px-4 py-3.5 text-slate-100 placeholder-slate-600 focus:outline-none text-sm font-medium"
+                    className="w-full bg-transparent px-4 py-3.5 text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium"
                   />
                 </div>
                 {errors.phone ? (
@@ -567,20 +570,20 @@ export default function SubmitPage() {
               </div>
 
               {/* Media & Voice Row */}
-              <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+              <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
                 {/* Voice Note Section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                       <span>🎙️ Voice Note</span>
                       <span className="text-slate-500 font-medium text-xs">(Bilingual Translation)</span>
                     </label>
-                    <div className="flex items-center gap-1 bg-slate-950 border border-white/10 rounded-lg p-0.5 text-xs">
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-lg p-0.5 text-xs">
                       <button
                         type="button"
                         onClick={() => setSpeechLanguage('hi-IN')}
                         className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
-                          speechLanguage === 'hi-IN' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                          speechLanguage === 'hi-IN' ? 'bg-orange-600 text-slate-900' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         हिन्दी
@@ -589,7 +592,7 @@ export default function SubmitPage() {
                         type="button"
                         onClick={() => setSpeechLanguage('en-IN')}
                         className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
-                          speechLanguage === 'en-IN' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                          speechLanguage === 'en-IN' ? 'bg-orange-600 text-slate-900' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         English
@@ -597,7 +600,7 @@ export default function SubmitPage() {
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600">
                     Speak in Hindi or English. Our AI will automatically transcribe and translate your report into both languages.
                   </p>
 
@@ -606,9 +609,9 @@ export default function SubmitPage() {
                       <button
                         type="button"
                         onClick={startRecording}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-all font-semibold text-sm shadow-sm hover:scale-[1.02]"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200 transition-all font-semibold text-sm shadow-sm hover:scale-[1.02]"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         </svg>
                         <span>{spokenRawText ? 'Re-record Voice Note' : 'Record Voice Note'}</span>
@@ -629,8 +632,8 @@ export default function SubmitPage() {
 
                       {/* Live spoken preview */}
                       {liveTranscript && (
-                        <div className="p-2.5 rounded-xl bg-slate-950/80 border border-indigo-500/20 text-xs text-indigo-200">
-                          <span className="text-slate-400 font-semibold mr-1.5">Listening:</span>
+                        <div className="p-2.5 rounded-xl bg-white border border-orange-200 text-xs text-orange-800">
+                          <span className="text-slate-600 font-semibold mr-1.5">Listening:</span>
                           <span className="italic">{liveTranscript}</span>
                         </div>
                       )}
@@ -639,7 +642,7 @@ export default function SubmitPage() {
 
                   {/* Translating Indicator */}
                   {isTranslating && (
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 animate-pulse">
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-xs text-orange-700 animate-pulse">
                       <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
                       <span>Interpreting and translating speech into Hindi & English...</span>
                     </div>
@@ -647,15 +650,15 @@ export default function SubmitPage() {
 
                   {/* Bilingual Interpretation Card */}
                   {(englishTranslation || hindiTranslation || spokenRawText) && !isRecording && (
-                    <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-indigo-500/30 shadow-lg space-y-2.5 animate-fade-in">
-                      <div className="flex items-center justify-between text-xs pb-1 border-b border-white/5">
-                        <span className="font-bold text-white flex items-center gap-1.5">
-                          <span className="text-emerald-400">✓</span> Voice Transcribed & Translated
+                    <div className="p-3.5 rounded-2xl bg-white border border-orange-300 shadow-lg space-y-2.5 animate-fade-in">
+                      <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-200">
+                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <span className="text-green-700">✓</span> Voice Transcribed & Translated
                         </span>
                         <button
                           type="button"
                           onClick={insertBilingualToDescription}
-                          className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-1"
+                          className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-2.5 py-1 rounded-lg border border-orange-200 transition-all flex items-center gap-1"
                         >
                           <span>✨</span>
                           <span>Insert into Description</span>
@@ -663,21 +666,21 @@ export default function SubmitPage() {
                       </div>
 
                       {/* English Display */}
-                      <div className="text-xs bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
-                        <div className="font-semibold text-indigo-300 mb-0.5 flex items-center gap-1">
+                      <div className="text-xs bg-white p-2.5 rounded-xl border border-slate-200">
+                        <div className="font-semibold text-orange-700 mb-0.5 flex items-center gap-1">
                           <span>🇬🇧</span>
                           <span>English Interpretation:</span>
                         </div>
-                        <p className="text-slate-200 leading-relaxed">{englishTranslation || spokenRawText}</p>
+                        <p className="text-slate-800 leading-relaxed">{englishTranslation || spokenRawText}</p>
                       </div>
 
                       {/* Hindi Display */}
-                      <div className="text-xs bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
-                        <div className="font-semibold text-emerald-300 mb-0.5 flex items-center gap-1">
+                      <div className="text-xs bg-white p-2.5 rounded-xl border border-slate-200">
+                        <div className="font-semibold text-green-800 mb-0.5 flex items-center gap-1">
                           <span>🇮🇳</span>
                           <span>हिन्दी अनुवाद (Hindi):</span>
                         </div>
-                        <p className="text-slate-200 leading-relaxed">{hindiTranslation || spokenRawText}</p>
+                        <p className="text-slate-800 leading-relaxed">{hindiTranslation || spokenRawText}</p>
                       </div>
                     </div>
                   )}
@@ -685,10 +688,10 @@ export default function SubmitPage() {
 
                 {/* Photo / Evidence Upload */}
                 <div>
-                  <label className="flex text-sm font-bold text-white mb-2">
+                  <label className="flex text-sm font-bold text-slate-900 mb-2">
                     Photo / Evidence <span className="text-slate-500 ml-2 font-medium">(Optional)</span>
                   </label>
-                  <p className="text-xs text-slate-400 mb-3">Upload a picture of the issue to help teams assess severity.</p>
+                  <p className="text-xs text-slate-600 mb-3">Upload a picture of the issue to help teams assess severity.</p>
 
                   <div className="relative">
                     <input
@@ -697,7 +700,7 @@ export default function SubmitPage() {
                       onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-700 transition-colors cursor-pointer">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -708,16 +711,16 @@ export default function SubmitPage() {
               </div>
 
               {/* Map Location Section (Jharkhand) */}
-              <div className="pt-4 border-t border-white/5">
+              <div className="pt-4 border-t border-slate-200">
                 <div className="flex justify-between items-end mb-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <label className="text-sm font-bold text-white">Incident Location (Jharkhand)</label>
-                      <span className="text-[11px] font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                      <label className="text-sm font-bold text-slate-900">Incident Location (Jharkhand)</label>
+                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
                         Jharkhand Only
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">Search an address or landmark, enter coordinates, or click on the map.</p>
+                    <p className="text-xs text-slate-600">Search an address or landmark, enter coordinates, or click on the map.</p>
                   </div>
                   <button
                     type="button"
@@ -739,18 +742,18 @@ export default function SubmitPage() {
 
           {/* Consent & Submit */}
           <div className="space-y-6">
-            <div className={`flex items-start gap-3 p-5 rounded-2xl border ${errors.consent ? 'bg-red-500/10 border-red-500/30' : 'bg-slate-900/60 border-slate-800'}`}>
+            <div className={`flex items-start gap-3 p-5 rounded-2xl border ${errors.consent ? 'bg-red-500/10 border-red-500/30' : 'bg-white border-slate-200'}`}>
               <div className="pt-0.5">
                 <input
                   type="checkbox"
                   id="consent"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-700 bg-slate-900 accent-indigo-500 cursor-pointer"
+                  className="w-5 h-5 rounded border-slate-300 bg-slate-100 accent-orange-600 cursor-pointer"
                 />
               </div>
               <div>
-                <label htmlFor="consent" className="text-sm text-slate-300 leading-relaxed font-medium cursor-pointer block">
+                <label htmlFor="consent" className="text-sm text-slate-700 leading-relaxed font-medium cursor-pointer block">
                   I acknowledge that solutions arising from this report default to open / public-good licensing unless a participating industry partner negotiates otherwise. <span className="text-red-400">*</span>
                 </label>
                 {errors.consent && <p className="mt-1 text-sm text-red-400 font-medium">{errors.consent}</p>}
@@ -767,7 +770,7 @@ export default function SubmitPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-extrabold text-lg shadow-xl shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-[1.02] transition-all disabled:opacity-70 disabled:pointer-events-none disabled:scale-100 overflow-hidden group"
+              className="w-full relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-green-600 text-slate-900 font-extrabold text-lg shadow-xl shadow-orange-600/25 hover:shadow-orange-600/40 hover:scale-[1.02] transition-all disabled:opacity-70 disabled:pointer-events-none disabled:scale-100 overflow-hidden group"
             >
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
 
@@ -791,3 +794,4 @@ export default function SubmitPage() {
     </div>
   )
 }
+

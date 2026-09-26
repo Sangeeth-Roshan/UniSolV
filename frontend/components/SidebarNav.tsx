@@ -247,6 +247,7 @@ export function SidebarNav({
     "/dashboard/institution",
     "/dashboard/government",
     "/dashboard/government/analytics",
+    "/dashboard/government/applications"
   ]);
 
   const mainItems = visibleItems.filter((i) => mainHrefs.has(i.href));
@@ -258,20 +259,20 @@ export function SidebarNav({
       <Link
         href={item.href}
         className={[
-          "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium",
+          "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold",
           "transition-all duration-200 group overflow-hidden",
           isActive
-            ? "bg-indigo-500/20 text-white shadow-sm shadow-indigo-500/10"
-            : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]",
+            ? "bg-orange-50 text-orange-800 border border-orange-200 shadow-sm"
+            : "text-slate-600 hover:text-slate-900 hover:bg-white/40",
         ].join(" ")}
       >
         {/* Left accent bar */}
         <span
           className={[
-            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-200",
+            "absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-md transition-all duration-200",
             isActive
-              ? "h-[55%] bg-indigo-400 opacity-100"
-              : "h-0 opacity-0 group-hover:h-[35%] group-hover:opacity-30 group-hover:bg-slate-400",
+              ? "h-[60%] bg-[#FF9933] opacity-100"
+              : "h-0 opacity-0 group-hover:h-[40%] group-hover:opacity-100 group-hover:bg-[#138808]",
           ].join(" ")}
         />
 
@@ -280,66 +281,58 @@ export function SidebarNav({
           className={[
             "transition-colors duration-200",
             isActive
-              ? "text-indigo-300"
-              : "text-slate-500 group-hover:text-slate-300",
+              ? "text-orange-600"
+              : "text-slate-400 group-hover:text-slate-600",
           ].join(" ")}
         >
           <NavIcon href={item.href} />
         </span>
 
         {/* Label */}
-        <span className="flex-1 leading-none">{item.label}</span>
+        <span className="flex-1 leading-none uppercase tracking-wide text-xs">{item.label}</span>
 
         {/* Optional badge chip */}
         {item.badge && (
-          <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/30">
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-orange-700 border border-orange-200">
             {item.badge}
           </span>
-        )}
-
-        {/* Active ring glow */}
-        {isActive && (
-          <span className="absolute inset-0 rounded-xl ring-1 ring-indigo-500/25 pointer-events-none" />
         )}
       </Link>
     );
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex flex-col w-[260px] bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/[0.06] border-l-2 border-l-indigo-500/40">
+    <aside className="fixed inset-y-0 left-0 z-40 flex flex-col w-[260px] bg-white/50 backdrop-blur-3xl border-r border-white/60 border-l-4 border-l-[#FF9933] shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
 
       {/* ── Brand ── */}
-      <div className="px-5 py-5 border-b border-white/[0.06]">
+      <div className="px-5 py-6 border-b border-slate-200 bg-white/40">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 group-hover:scale-[1.06] transition-all duration-200 shrink-0">
-            {/* Lightning bolt */}
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-5 h-5">
-              <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd" />
-            </svg>
-            <span className="absolute inset-0 rounded-2xl ring-1 ring-indigo-400/30 group-hover:ring-indigo-400/60 transition-all" />
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-[#138808] shadow-sm group-hover:shadow-md group-hover:scale-[1.06] transition-all duration-200 shrink-0">
+            {/* Jharkhand Emblem */}
+            <img src="https://upload.wikimedia.org/wikipedia/commons/f/f0/Seal_of_Jharkhand.svg" alt="Jharkhand Emblem" className="w-8 h-8 object-contain" />
           </div>
           <div>
-            <h1 className="text-[15px] font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent group-hover:from-indigo-200 group-hover:to-violet-200 transition-all duration-200">
-              UniSOLV
+            <h1 className="text-[14px] font-black tracking-tight text-slate-800 uppercase">
+              Govt. of Jharkhand
             </h1>
-            <p className="text-[11px] text-slate-500 mt-0.5 font-medium leading-none">
-              Civic Intelligence Platform
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+              UniSOLV Portal
             </p>
           </div>
         </Link>
       </div>
 
       {/* ── Role / Status Badge ── */}
-      <div className="px-4 pt-4 pb-1">
-        <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${badge.bg}`}>
+      <div className="px-4 pt-5 pb-2">
+        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-white/40 border-slate-200 shadow-sm`}>
           {/* Animated pulse dot */}
-          <span className="relative flex h-2 w-2 shrink-0">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             {auth.isAuthenticated && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#138808] opacity-60" />
             )}
             <span
-              className={`relative inline-flex rounded-full h-2 w-2 ${
-                auth.isAuthenticated ? "bg-emerald-400" : "bg-slate-600"
+              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                auth.isAuthenticated ? "bg-[#138808]" : "bg-slate-400"
               }`}
             />
           </span>
@@ -348,21 +341,21 @@ export function SidebarNav({
             {auth.isAuthenticated ? (
               <>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-500 leading-none">Signed in as</span>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Signed in as</span>
                   <span
-                    className={`text-[11px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${badge.bg} ${badge.text}`}
+                    className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md border bg-white text-slate-800 border-slate-300 shadow-sm`}
                   >
                     {badge.label}
                   </span>
                 </div>
                 {auth.userEmail && (
-                  <span className="text-[11px] font-mono text-slate-500 truncate leading-none">
+                  <span className="text-[11px] font-semibold text-slate-600 truncate leading-none mt-1">
                     {auth.userEmail}
                   </span>
                 )}
               </>
             ) : (
-              <span className="text-[12px] text-slate-500 font-medium leading-none">
+              <span className="text-[11px] text-slate-500 font-bold uppercase">
                 Guest Visitor
               </span>
             )}
@@ -371,11 +364,11 @@ export function SidebarNav({
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-3 pb-4 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 overflow-y-auto">
         {mainItems.length > 0 && (
           <>
-            <SectionLabel label="Main Menu" />
-            <div className="space-y-0.5">
+            <SectionLabel label="Public Services" />
+            <div className="space-y-1">
               {mainItems.map((item) => (
                 <NavLink key={item.href} item={item} />
               ))}
@@ -385,8 +378,9 @@ export function SidebarNav({
 
         {dashItems.length > 0 && (
           <>
-            <SectionLabel label="Dashboards" />
-            <div className="space-y-0.5">
+            <div className="mt-4" />
+            <SectionLabel label="Official Portals" />
+            <div className="space-y-1">
               {dashItems.map((item) => (
                 <NavLink key={item.href} item={item} />
               ))}
@@ -396,32 +390,28 @@ export function SidebarNav({
       </nav>
 
       {/* ── Footer ── */}
-      <div className="px-3 py-4 border-t border-white/[0.06] space-y-2">
+      <div className="px-3 py-4 border-t border-slate-200 bg-white/40 space-y-2">
         {auth.isAuthenticated ? (
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-200 disabled:opacity-40 group"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-all duration-200 disabled:opacity-40 uppercase tracking-wide shadow-sm"
           >
-            <span className="text-red-500/70 group-hover:text-red-400 transition-colors">
-              <IconLogout />
-            </span>
-            <span>{loggingOut ? "Signing out…" : "Sign Out"}</span>
+            <IconLogout />
+            <span>{loggingOut ? "Logging out..." : "Logout"}</span>
           </button>
         ) : (
           <Link
             href="/login"
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 transition-all duration-200 group"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold text-white bg-[#138808] hover:bg-green-700 transition-all duration-200 uppercase tracking-wide shadow-sm"
           >
-            <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors">
-              <IconArrowRightOnRect />
-            </span>
-            <span>Sign In / Demo Login</span>
+            <IconArrowRightOnRect />
+            <span>Citizen Login</span>
           </Link>
         )}
 
-        <p className="text-[10px] text-slate-700 text-center font-mono tracking-wide pt-0.5">
-          UniSOLV · Civic Governance · v0.1
+        <p className="text-[10px] text-slate-400 text-center font-semibold uppercase tracking-wider pt-2">
+          Govt of Jharkhand • UniSOLV
         </p>
       </div>
     </aside>

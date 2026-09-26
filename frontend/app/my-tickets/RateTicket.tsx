@@ -41,8 +41,8 @@ export function RateTicket({ ticketId }: { ticketId: number }) {
   }
 
   return (
-    <div className="border border-indigo-500/20 rounded-xl p-4 bg-indigo-500/5 space-y-3">
-      <h4 className="text-sm font-bold text-indigo-300">⭐ Rate this Resolution</h4>
+    <div className="border border-orange-500/20 rounded-xl p-4 bg-indigo-500/5 space-y-3">
+      <h4 className="text-sm font-bold text-orange-700">⭐ Rate this Resolution</h4>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
@@ -58,19 +58,19 @@ export function RateTicket({ ticketId }: { ticketId: number }) {
             ★
           </button>
         ))}
-        {score > 0 && <span className="ml-2 text-sm text-slate-400 self-center">{score}/5</span>}
+        {score > 0 && <span className="ml-2 text-sm text-slate-500 self-center">{score}/5</span>}
       </div>
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="Any comments about the resolution? (optional)"
-        className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none h-16"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-600 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none h-16"
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button
         onClick={handleSubmit}
         disabled={submitting || !score}
-        className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600/80 text-white text-sm font-semibold rounded-xl hover:bg-indigo-600 transition-all border border-indigo-500/40 disabled:opacity-50 disabled:pointer-events-none"
+        className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-600/80 text-slate-900 text-sm font-semibold rounded-xl hover:bg-orange-600 transition-all border border-orange-500/40 disabled:opacity-50 disabled:pointer-events-none"
       >
         {submitting ? 'Submitting...' : 'Submit Rating'}
       </button>

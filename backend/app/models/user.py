@@ -27,6 +27,7 @@ class User(Base):
     institution_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("institutions.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

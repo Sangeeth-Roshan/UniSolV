@@ -33,12 +33,12 @@ export function HeaderControls({
   const pageTitle = getPageName(pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 bg-slate-950/80 backdrop-blur-sm border-b border-white/5">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-4 bg-white/40 backdrop-blur-3xl border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)] mt-1.5">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-slate-500 font-medium">UniSOLV</span>
-        <span className="text-slate-700">/</span>
-        <span className="text-sm text-slate-300 font-medium">{pageTitle}</span>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Ashoka_Chakra.svg" alt="Ashoka Chakra" className="w-5 h-5 opacity-70 animate-[spin_30s_linear_infinite]" /><span className="text-sm text-slate-500 font-bold uppercase tracking-wider">Jharkhand Portal</span>
+        <span className="text-slate-300">/</span>
+        <span className="text-sm text-orange-700 font-bold uppercase tracking-wider">{pageTitle}</span>
       </div>
 
       {/* Action Controls */}

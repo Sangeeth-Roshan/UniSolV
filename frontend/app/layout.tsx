@@ -62,8 +62,13 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" className="dark">
-      <body className={`${jakarta.variable} font-jakarta antialiased`}>
+    <html lang="en">
+      <body className={`${jakarta.variable} font-jakarta antialiased bg-slate-50 relative overflow-x-hidden`}>
+  {/* Abstract Liquid Glass Blobs for Background */}
+  <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-orange-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-[spin_20s_linear_infinite]" />
+  <div className="fixed bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-green-400/20 blur-[130px] mix-blend-multiply pointer-events-none animate-[spin_25s_linear_infinite_reverse]" />
+  <div className="fixed top-[40%] left-[30%] w-[30vw] h-[30vw] rounded-full bg-amber-200/20 blur-[100px] mix-blend-multiply pointer-events-none animate-[ping_10s_ease-in-out_infinite]" />
+
         <div className="flex min-h-screen">
           <SidebarNav
             role={role}

@@ -92,6 +92,7 @@ class ApplicationRequest(BaseModel):
     institution_type: str  # "university" or "company"
     domains_of_expertise: List[str] = []
     contact_email: str
+    contact_phone: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -135,6 +136,7 @@ async def apply_for_institution(
         institution_type=body.institution_type,
         domains_of_expertise=body.domains_of_expertise,
         contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
         description=body.description,
         status=ApplicationStatus.pending,
     )
@@ -193,6 +195,7 @@ async def list_applications(
             "institution_type": a.institution_type,
             "domains_of_expertise": a.domains_of_expertise,
             "contact_email": a.contact_email,
+            "contact_phone": a.contact_phone,
             "description": a.description,
             "status": a.status,
             "review_notes": a.review_notes,

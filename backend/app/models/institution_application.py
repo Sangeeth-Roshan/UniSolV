@@ -39,6 +39,7 @@ class InstitutionApplication(Base):
         JSONB, nullable=False, server_default="[]"
     )
     contact_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     status: Mapped[ApplicationStatus] = mapped_column(

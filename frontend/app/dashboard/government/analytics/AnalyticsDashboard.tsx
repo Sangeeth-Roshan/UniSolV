@@ -40,7 +40,7 @@ function MiniKpi({ label, value, sub, accent }: { label: string; value: string |
   return (
     <div className={`glass-card p-4 border-t-2 ${accent}`}>
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-2xl font-extrabold text-white">{value}</p>
+      <p className="text-2xl font-extrabold text-slate-900">{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
     </div>
   )
@@ -52,7 +52,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
       {/* ── KPI Cards ── */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <MiniKpi label="Total" value={summary.total_tickets} sub="All tickets" accent="border-indigo-500" />
+          <MiniKpi label="Total" value={summary.total_tickets} sub="All tickets" accent="border-orange-500" />
           <MiniKpi label="Open" value={summary.open_tickets} sub="Awaiting action" accent="border-amber-500" />
           <MiniKpi label="Resolved" value={summary.closed_tickets} sub={`${summary.resolution_rate}% rate`} accent="border-emerald-500" />
           <MiniKpi label="Escalated" value={summary.escalated_tickets} sub="Urgent" accent="border-red-500" />
@@ -64,7 +64,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Domains Chart */}
       <div className="glass-card p-6">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Tickets by Domain</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-700">Tickets by Domain</h2>
         {domains.length === 0 ? (
           <p className="text-slate-500 text-sm">No data yet.</p>
         ) : (
@@ -88,7 +88,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Funnel Chart */}
       <div className="glass-card p-6">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Status Funnel</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-700">Status Funnel</h2>
         {funnel.length === 0 ? (
           <p className="text-slate-500 text-sm">No data yet.</p>
         ) : (
@@ -112,7 +112,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Map */}
       <div className="glass-card p-6 lg:col-span-2">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Active Hotspots & Tickets (Jharkhand)</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-700">Active Hotspots & Tickets (Jharkhand)</h2>
         <div className="h-96 rounded-xl overflow-hidden">
           <HotspotMap hotspots={hotspots} ticketLocations={ticketLocations} />
         </div>
@@ -120,7 +120,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Trends */}
       <div className="glass-card p-6 lg:col-span-2">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Performance Trends (Last 7 Days)</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-700">Performance Trends (Last 7 Days)</h2>
         {trends.length === 0 ? (
           <p className="text-slate-500 text-sm">No data yet.</p>
         ) : (
@@ -146,35 +146,35 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Leaderboard */}
       <div className="glass-card p-6 lg:col-span-2 overflow-x-auto">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Institution Leaderboard</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-700">Institution Leaderboard</h2>
         {leaderboard.length === 0 ? (
           <p className="text-slate-500 text-sm">No institutions registered yet.</p>
         ) : (
-          <table className="min-w-full text-left text-sm text-slate-400">
-            <thead className="border-b border-white/10">
+          <table className="min-w-full text-left text-sm text-slate-500">
+            <thead className="border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 font-medium text-slate-300">Rank</th>
-                <th className="px-4 py-3 font-medium text-slate-300">Institution</th>
-                <th className="px-4 py-3 font-medium text-slate-300">Type</th>
-                <th className="px-4 py-3 font-medium text-slate-300 text-right">Reputation</th>
-                <th className="px-4 py-3 font-medium text-slate-300 text-right">Load</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Rank</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Institution</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Type</th>
+                <th className="px-4 py-3 font-medium text-slate-600 text-right">Reputation</th>
+                <th className="px-4 py-3 font-medium text-slate-600 text-right">Load</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-200">
               {leaderboard.map((inst, idx) => (
-                <tr key={inst.id} className="hover:bg-white/5 transition-colors">
+                <tr key={inst.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-slate-500">#{idx + 1}</td>
-                  <td className="px-4 py-3 font-medium text-white">{inst.name}</td>
-                  <td className="px-4 py-3 capitalize text-slate-400">{inst.type}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{inst.name}</td>
+                  <td className="px-4 py-3 capitalize text-slate-500">{inst.type}</td>
                   <td className="px-4 py-3 text-right">
-                    <span className="font-semibold text-indigo-400">{inst.reputation_score.toFixed(2)}</span>
+                    <span className="font-semibold text-orange-600">{inst.reputation_score.toFixed(2)}</span>
                     <div className="text-xs text-slate-600 mt-1 space-y-0.5">
                       {Object.entries(inst.reputation_by_domain || {}).map(([dom, score]) => (
                         <div key={dom}>{dom}: {Number(score).toFixed(2)}</div>
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-400">{inst.current_load}</td>
+                  <td className="px-4 py-3 text-right text-slate-500">{inst.current_load}</td>
                 </tr>
               ))}
             </tbody>

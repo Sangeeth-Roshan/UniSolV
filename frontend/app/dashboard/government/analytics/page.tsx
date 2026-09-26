@@ -17,13 +17,13 @@ async function fetchAnalytics() {
 
   try {
     const [domRes, funRes, leadRes, hotRes, trendRes, sumRes, locRes] = await Promise.all([
-      fetch(`${BASE}/domains`,     { headers, cache: 'no-store' }),
-      fetch(`${BASE}/funnel`,      { headers, cache: 'no-store' }),
-      fetch(`${BASE}/leaderboard`, { headers, cache: 'no-store' }),
-      fetch(`${BASE}/hotspots`,    { headers, cache: 'no-store' }),
-      fetch(`${BASE}/trends`,      { headers, cache: 'no-store' }),
-      fetch(`${BASE}/summary`,     { headers, cache: 'no-store' }),
-      fetch(`${BASE}/ticket-locations`, { headers, cache: 'no-store' }),
+      fetch(`${BASE}/domains`,     { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/funnel`,      { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/leaderboard`, { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/hotspots`,    { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/trends`,      { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/summary`,     { headers, next: { revalidate: 5 } }),
+      fetch(`${BASE}/ticket-locations`, { headers, next: { revalidate: 5 } }),
     ])
 
     return {
@@ -52,7 +52,7 @@ export default async function AnalyticsPage() {
         </div>
         <Link
           href="/dashboard/government"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-700 transition-all self-start sm:self-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
