@@ -2,7 +2,6 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { NotificationsDropdown } from "./NotificationsDropdown";
 import { UserMenu } from "./UserMenu";
 
 interface HeaderControlsProps {
@@ -43,9 +42,6 @@ export function HeaderControls({
 
       {/* Action Controls */}
       <div className="flex items-center gap-4">
-        {/* Interactive Notifications Bell */}
-        <NotificationsDropdown />
-
         {/* User Profile Menu & Logout */}
         <UserMenu
           isAuthenticated={isAuthenticated}

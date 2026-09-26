@@ -29,20 +29,49 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const formData = new FormData()
-    formData.set('email', email)
-    formData.set('password', password)
-    const result = await loginAction(formData)
-    
-    if (result?.error) {
-      setError(result.error)
+
+    try {
+      const formData = new FormData()
+      formData.set('email', email)
+      formData.set('password', password)
+
+      let result: any = null
+      try {
+        result = await loginAction(formData)
+      } catch {
+        // Fallback to proxy route if Server Action connection was interrupted
+        const proxyForm = new FormData()
+        proxyForm.set('username', email)
+        proxyForm.set('password', password)
+        const pRes = await fetch('/api/proxy/auth/login', {
+          method: 'POST',
+          body: proxyForm,
+        })
+        if (pRes.ok) {
+          result = await pRes.json()
+        } else {
+          const errData = await pRes.json().catch(() => ({}))
+          result = { error: errData.detail || 'Login failed. Please check credentials.' }
+        }
+      }
+
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      } else if (result?.success) {
+        let target = '/submit'
+        const r = String(result.role || '').toLowerCase()
+        if (r === 'citizen') target = '/submit'
+        else if (r === 'government_officer') target = '/dashboard/government'
+        else target = '/dashboard/institution'
+        window.location.href = target
+      } else {
+        setError('Login failed. Please check your credentials.')
+        setLoading(false)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Connection error. Please try again.')
       setLoading(false)
-    } else if (result?.success) {
-      let target = '/submit'
-      if (result.role === 'citizen') target = '/submit'
-      else if (result.role === 'government_officer') target = '/dashboard/government'
-      else target = '/dashboard/institution'
-      window.location.href = target
     }
   }
 

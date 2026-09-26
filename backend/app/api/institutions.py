@@ -1,13 +1,13 @@
 """
 Institutions API.
 
-GET  /api/institutions                         — list all approved institutions
-GET  /api/institutions/{id}/reputation         — per-institution reputation scores
+GET  /api/institutions                         â€” list all approved institutions
+GET  /api/institutions/{id}/reputation         â€” per-institution reputation scores
 
-POST /api/institutions/apply                   — any user submits a university registration application
-GET  /api/institutions/applications            — govt officer views all applications
-POST /api/institutions/applications/{id}/approve — govt officer approves application
-POST /api/institutions/applications/{id}/reject  — govt officer rejects application
+POST /api/institutions/apply                   â€” any user submits a university registration application
+GET  /api/institutions/applications            â€” govt officer views all applications
+POST /api/institutions/applications/{id}/approve â€” govt officer approves application
+POST /api/institutions/applications/{id}/reject  â€” govt officer rejects application
 """
 from __future__ import annotations
 
@@ -31,8 +31,59 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
-# GET /api/institutions — list all approved institutions
+# GET /api/institutions â€” list all approved institutions
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# GET /api/institutions/leaderboard - public leaderboard for citizens & guests
+# ---------------------------------------------------------------------------
+
+@router.get("/leaderboard")
+async def get_public_institution_leaderboard(
+    db: AsyncSession = Depends(get_db),
+):
+    """Public leaderboard of top resolving institutions for citizens & visitors.
+    
+    No authentication required.
+    """
+    from sqlalchemy import desc, func
+    from app.models.ticket import Ticket
+    from app.models.enums import TicketStatus
+
+    query = select(Institution).order_by(desc(Institution.reputation_score))
+    result = await db.execute(query)
+    institutions = result.scalars().all()
+
+    # Get resolved count per institution
+    tickets_q = await db.execute(
+        select(Ticket.assigned_institution_id, func.count(Ticket.id))
+        .where(Ticket.status.in_([TicketStatus.closed, TicketStatus.verified]))
+        .group_by(Ticket.assigned_institution_id)
+    )
+    resolved_counts = dict(tickets_q.all())
+
+    # Get total count per institution
+    total_q = await db.execute(
+        select(Ticket.assigned_institution_id, func.count(Ticket.id))
+        .where(Ticket.assigned_institution_id.isnot(None))
+        .group_by(Ticket.assigned_institution_id)
+    )
+    total_counts = dict(total_q.all())
+
+    return [
+        {
+            "id": i.id,
+            "name": i.name,
+            "type": i.type.value if hasattr(i.type, "value") else str(i.type),
+            "domains_of_expertise": i.domains_of_expertise or [],
+            "reputation_score": round(i.reputation_score * 100, 1) if i.reputation_score <= 1.0 else round(i.reputation_score, 1),
+            "resolved_count": resolved_counts.get(i.id, 0),
+            "total_tickets": total_counts.get(i.id, 0),
+            "current_load": i.current_load or 0,
+        }
+        for i in institutions
+    ]
+
 
 @router.get("")
 async def list_institutions(
@@ -91,7 +142,7 @@ async def get_institution_reputation(
 
 
 # ---------------------------------------------------------------------------
-# POST /api/institutions/apply — submit a registration application
+# POST /api/institutions/apply â€” submit a registration application
 # ---------------------------------------------------------------------------
 
 class ApplicationRequest(BaseModel):
@@ -162,7 +213,7 @@ async def apply_for_institution(
 
 
 # ---------------------------------------------------------------------------
-# GET /api/institutions/applications — govt officer sees all applications
+# GET /api/institutions/applications â€” govt officer sees all applications
 # ---------------------------------------------------------------------------
 
 @router.get("/applications")
@@ -221,7 +272,7 @@ async def list_applications(
 
 
 # ---------------------------------------------------------------------------
-# POST /api/institutions/applications/{id}/approve — govt officer approves
+# POST /api/institutions/applications/{id}/approve â€” govt officer approves
 # ---------------------------------------------------------------------------
 
 class ApproveRequest(BaseModel):
@@ -296,7 +347,7 @@ async def approve_application(
 
 
 # ---------------------------------------------------------------------------
-# POST /api/institutions/applications/{id}/reject — govt officer rejects
+# POST /api/institutions/applications/{id}/reject â€” govt officer rejects
 # ---------------------------------------------------------------------------
 
 class RejectRequest(BaseModel):

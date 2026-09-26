@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 
 export interface TicketEvent {
@@ -33,14 +35,14 @@ export interface TicketData {
 
 interface TicketCardProps {
   ticket: TicketData
-  viewMode: 'citizen' | 'government' | 'institution'
+  viewMode?: 'citizen' | 'government' | 'institution'
+  _viewMode?: 'citizen' | 'government' | 'institution'
   actionsSlot?: React.ReactNode
 }
 
-// ── Status configurations ──────────────────────────────────────────────────
+// Status configurations with Indian Flag (Saffron, White, Green) + Slate accents
 const STATUS_MAP: Record<string, {
   label: string
-  icon: string
   step: number
   pillClass: string
   accentGradient: string
@@ -48,73 +50,64 @@ const STATUS_MAP: Record<string, {
 }> = {
   pending_validation: {
     label: 'Pending Review',
-    icon: '⏳',
     step: 1,
-    pillClass: 'bg-amber-500/10 text-amber-300 border-amber-500/25',
-    accentGradient: 'from-amber-500/60 to-amber-600/30',
-    userMessage: 'Your report has been received and is queued for government review.',
+    pillClass: 'bg-amber-50 text-amber-900 border-amber-300',
+    accentGradient: 'from-amber-400 to-amber-500',
+    userMessage: 'Grievance received and queued for review by Government of Jharkhand officers.',
   },
   routed: {
     label: 'Assigned to Institution',
-    icon: '🚀',
     step: 3,
-    pillClass: 'bg-blue-500/10 text-blue-300 border-blue-500/25',
-    accentGradient: 'from-blue-500/60 to-indigo-600/30',
-    userMessage: 'Assigned to an institution for inspection and scheduling.',
+    pillClass: 'bg-blue-50 text-blue-900 border-blue-300',
+    accentGradient: 'from-blue-500 to-indigo-600',
+    userMessage: 'Assigned to an accredited institution or municipal agency for remediation.',
   },
   accepted: {
     label: 'Accepted by Team',
-    icon: '🤝',
     step: 3,
-    pillClass: 'bg-violet-500/10 text-violet-300 border-violet-500/25',
-    accentGradient: 'from-violet-500/60 to-purple-600/30',
-    userMessage: 'The institution accepted the assignment. Planning and field work underway.',
+    pillClass: 'bg-orange-50 text-orange-900 border-orange-300',
+    accentGradient: 'from-orange-400 to-orange-500',
+    userMessage: 'The assigned institution accepted the ticket. On-ground assessment initiated.',
   },
   in_progress: {
     label: 'Work in Progress',
-    icon: '🔧',
     step: 4,
-    pillClass: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/25',
-    accentGradient: 'from-cyan-500/60 to-teal-600/30',
-    userMessage: 'On-site repair and remediation work is actively being performed.',
+    pillClass: 'bg-orange-50 text-orange-950 border-orange-400',
+    accentGradient: 'from-orange-500 to-amber-600',
+    userMessage: 'Remediation and field work are actively being executed on site.',
   },
   piloting: {
     label: 'Awaiting Verification',
-    icon: '🔍',
     step: 5,
-    pillClass: 'bg-teal-500/10 text-teal-300 border-teal-500/25',
-    accentGradient: 'from-teal-500/60 to-emerald-600/30',
-    userMessage: 'The team has finished work and submitted proof. Government verification in progress.',
+    pillClass: 'bg-teal-50 text-teal-900 border-teal-300',
+    accentGradient: 'from-teal-500 to-emerald-600',
+    userMessage: 'Field work completed with proof submitted. Awaiting government verification.',
   },
   verified: {
     label: 'Verified Resolution',
-    icon: '✅',
     step: 6,
-    pillClass: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
-    accentGradient: 'from-emerald-500/70 to-teal-500/40',
-    userMessage: 'Resolution verified! The civic issue has been successfully resolved.',
+    pillClass: 'bg-green-50 text-green-900 border-green-300',
+    accentGradient: 'from-[#138808] to-emerald-600',
+    userMessage: 'Resolution officially verified by government officers. Issue resolved.',
   },
   closed: {
     label: 'Closed & Resolved',
-    icon: '🎉',
     step: 6,
-    pillClass: 'bg-slate-500/10 text-slate-300 border-slate-500/25',
-    accentGradient: 'from-slate-500/50 to-slate-700/30',
-    userMessage: 'Issue successfully resolved and archived. Thank you for making our city better!',
+    pillClass: 'bg-slate-100 text-slate-800 border-slate-300',
+    accentGradient: 'from-slate-400 to-slate-600',
+    userMessage: 'Issue successfully resolved and archived. Thank you for improving Jharkhand!',
   },
   escalated: {
     label: 'Escalated (Priority Attention)',
-    icon: '⚠️',
     step: 2,
-    pillClass: 'bg-rose-500/10 text-rose-300 border-rose-500/25',
-    accentGradient: 'from-rose-500/70 to-red-600/30',
-    userMessage: 'Standard turnaround window elapsed. Escalated for priority supervisory handling.',
+    pillClass: 'bg-red-50 text-red-900 border-red-300',
+    accentGradient: 'from-red-500 to-rose-600',
+    userMessage: 'Resolution timeline exceeded. Escalated to senior departmental officers.',
   },
 }
 
 const STEPS = ['Reported', 'Reviewed', 'Assigned', 'In Progress', 'Verified', 'Closed']
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function normalizeSeverity(score: number | null): number {
   if (score == null) return 0.5
   if (score > 1.0) {
@@ -131,23 +124,23 @@ function getPriorityDetails(score: number | null) {
   if (norm >= 0.75) {
     return {
       label: 'High Priority',
-      badge: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
-      bar: 'bg-rose-500',
+      badge: 'bg-red-50 text-red-800 border-red-200',
+      bar: 'bg-red-500',
       pct,
     }
   }
   if (norm >= 0.4) {
     return {
       label: 'Moderate Priority',
-      badge: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-      bar: 'bg-amber-500',
+      badge: 'bg-orange-50 text-orange-800 border-orange-200',
+      bar: 'bg-orange-500',
       pct,
     }
   }
   return {
     label: 'Standard Priority',
-    badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-    bar: 'bg-emerald-500',
+    badge: 'bg-green-50 text-green-800 border-green-200',
+    bar: 'bg-[#138808]',
     pct,
   }
 }
@@ -167,7 +160,24 @@ function formatRelativeTime(dateStr: string) {
   }
 }
 
-function renderDescription(desc: string) {
+function formatEventDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function renderDescription(desc: string, isInstitution = false) {
   if (!desc) return null
   const hasVoiceNote = desc.includes('[Voice Note')
   if (hasVoiceNote) {
@@ -175,14 +185,12 @@ function renderDescription(desc: string) {
     const notes: { lang: string; text: string }[] = []
     for (let i = 0; i < parts.length; i += 2) {
       if (i + 1 < parts.length) {
-        // Remove trailing duplicate notes if any
         notes.push({ lang: parts[i], text: parts[i + 1].trim() })
       } else {
         notes.push({ lang: 'Note', text: parts[i].trim() })
       }
     }
 
-    // Keep unique languages
     const seen = new Set<string>()
     const uniqueNotes = notes.filter((n) => {
       const key = `${n.lang}:${n.text.slice(0, 30)}`
@@ -192,18 +200,20 @@ function renderDescription(desc: string) {
     })
 
     return (
-      <div className="mt-2.5 space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-cyan-400">
-          <span>🎙️</span>
+      <div className="mt-3 space-y-2">
+        <div className={`flex items-center gap-1.5 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-orange-700`}>
+          <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
           <span>Transcribed Voice Report</span>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {uniqueNotes.slice(0, 2).map((n, idx) => (
-            <div key={idx} className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <div key={idx} className={`bg-orange-50/60 border border-orange-200/80 rounded-xl p-3 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} shadow-sm`}>
+              <span className={`${isInstitution ? 'text-xs' : 'text-[10px]'} font-bold text-orange-800 uppercase tracking-wider block mb-1`}>
                 {n.lang}
               </span>
-              <p className="text-slate-300 leading-relaxed line-clamp-3">{n.text}</p>
+              <p className="text-slate-800 leading-relaxed line-clamp-3 font-medium">{n.text}</p>
             </div>
           ))}
         </div>
@@ -212,13 +222,14 @@ function renderDescription(desc: string) {
   }
 
   return (
-    <p className="text-sm text-slate-300 mt-1.5 line-clamp-3 leading-relaxed">
+    <p className={isInstitution ? "text-sm sm:text-base text-slate-700 mt-2 line-clamp-3 leading-relaxed font-normal" : "text-xs sm:text-sm text-slate-700 mt-2 line-clamp-3 leading-relaxed font-normal"}>
       {desc}
     </p>
   )
 }
 
-export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketData; _viewMode?: 'citizen' | 'government' | 'institution'; viewMode?: 'citizen' | 'government' | 'institution'; actionsSlot?: React.ReactNode }) {
+export function TicketCard({ ticket, actionsSlot, viewMode }: TicketCardProps) {
+  const isInstitution = viewMode === 'institution'
   const statusCfg = STATUS_MAP[ticket.status] ?? STATUS_MAP.pending_validation
   const priority = getPriorityDetails(ticket.severity_score)
   const isCompleted = ['verified', 'closed'].includes(ticket.status)
@@ -236,55 +247,61 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
       isSlaBreached = true
       slaRemainingText = 'SLA Breached'
     } else if (hours < 48) {
-      slaRemainingText = `${Math.floor(hours)}h ${Math.floor((hours % 1) * 60)}m left`
+      slaRemainingText = `${Math.floor(hours)}h ${Math.floor((hours % 1) * 60)}m remaining`
     }
   }
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden border border-white/[0.08] hover:border-white/[0.14] transition-all duration-200">
-      {/* ── Top accent gradient strip ────────────────────────────────────────── */}
-      <div className={`h-1 w-full bg-gradient-to-r ${statusCfg.accentGradient}`} />
+    <div className="bg-white/75 backdrop-blur-2xl rounded-2xl overflow-hidden border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-lg transition-all duration-200">
+      {/* Top Accent Strip with Indian Flag gradient */}
+      <div className={`h-1.5 w-full bg-gradient-to-r ${statusCfg.accentGradient}`} />
 
       <div className="p-5 sm:p-6 space-y-4">
-        {/* ── Top Bar: Title, ID & Status Badge ───────────────────────────────── */}
+        {/* Top Header Row: Title, ID & Status Badge */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-semibold text-white leading-snug tracking-tight">
+              <h3 className={isInstitution ? "text-lg sm:text-xl font-extrabold text-slate-900 leading-snug" : "text-base sm:text-lg font-bold text-slate-900 leading-snug tracking-tight"}>
                 {ticket.title}
               </h3>
-              <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/50">
+              <span className={isInstitution ? "text-xs sm:text-sm font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300" : "text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300"}>
                 #{ticket.id}
               </span>
             </div>
-            {renderDescription(ticket.description)}
+            {renderDescription(ticket.description, isInstitution)}
           </div>
 
           {/* Status Badge */}
-          <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusCfg.pillClass}`}>
-              <span>{statusCfg.icon}</span>
+          <div className="flex sm:flex-col items-center sm:items-end gap-1.5 shrink-0">
+            <span className={`inline-flex items-center gap-1.5 ${isInstitution ? 'px-3.5 py-1.5 text-xs sm:text-sm' : 'px-3 py-1 text-xs'} font-bold border shadow-sm rounded-full ${statusCfg.pillClass}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
               <span>{statusCfg.label}</span>
             </span>
-            <span className="text-[11px] text-slate-500">
-              {formatRelativeTime(ticket.created_at)}
+            <span suppressHydrationWarning className={isInstitution ? "text-xs sm:text-sm text-slate-500 font-medium" : "text-xs text-slate-500 font-medium"}>
+              Reported {formatRelativeTime(ticket.created_at)}
             </span>
           </div>
         </div>
 
-        {/* ── Meta Pills Row ──────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 flex-wrap pt-1">
+        {/* User Status Explanatory Note */}
+        <div className={`p-3 rounded-xl bg-slate-50 border border-slate-200 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} text-slate-700 flex items-center gap-2`}>
+          <span className="text-orange-600 font-bold">ℹ</span>
+          <span>{statusCfg.userMessage}</span>
+        </div>
+
+        {/* Meta Pills Row */}
+        <div className="flex items-center gap-2 flex-wrap pt-0.5">
           {/* Domain tag */}
           {ticket.domain && (
-            <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-orange-50 text-orange-800 border border-orange-200 rounded-full flex items-center gap-1.5 shadow-sm capitalize`}>
               <span>🏷️</span>
-              <span>{ticket.domain}</span>
+              <span>{ticket.domain.replace(/_/g, ' ')}</span>
             </span>
           )}
 
           {/* Assigned Institution */}
           {ticket.assigned_institution_name && (
-            <span className="text-xs font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-blue-50 text-blue-900 border border-blue-200 rounded-full flex items-center gap-1.5 shadow-sm`}>
               <span>🏛️</span>
               <span>{ticket.assigned_institution_name}</span>
             </span>
@@ -292,9 +309,9 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
 
           {/* Priority indicator */}
           {priority && (
-            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-lg border flex items-center gap-2 ${priority.badge}`}>
-              <span>Priority: {priority.label}</span>
-              <span className="inline-block w-10 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold rounded-full border flex items-center gap-2 shadow-sm ${priority.badge}`}>
+              <span>{priority.label}</span>
+              <span className="inline-block w-12 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                 <span
                   className={`block h-full rounded-full ${priority.bar}`}
                   style={{ width: `${priority.pct}%` }}
@@ -305,13 +322,13 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
 
           {/* SLA Badge */}
           {slaRemainingText && (
-            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-lg border flex items-center gap-1 ${
+            <span suppressHydrationWarning className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold rounded-full border flex items-center gap-1.5 shadow-sm ${
               isSlaBreached
-                ? 'bg-rose-500/10 text-rose-300 border-rose-500/25'
-                : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+                ? 'bg-red-50 text-red-800 border-red-300'
+                : 'bg-amber-50 text-amber-900 border-amber-300'
             }`}>
-              <span>⏱️</span>
-              <span>{slaRemainingText}</span>
+              <span>⏱</span>
+              <span suppressHydrationWarning>{slaRemainingText}</span>
             </span>
           )}
 
@@ -319,7 +336,7 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
           {ticket.contact_phone && (
             <a
               href={`tel:${ticket.contact_phone}`}
-              className="text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors"
+              className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-green-50 text-green-800 border border-green-300 rounded-full flex items-center gap-1.5 hover:bg-green-100 transition-colors shadow-sm`}
             >
               <span>📞</span>
               <span>{ticket.contact_phone}</span>
@@ -327,7 +344,7 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
           )}
         </div>
 
-        {/* ── Visual Progress Stepper ─────────────────────────────────────────── */}
+        {/* Visual Progress Stepper with Saffron / Green Accents */}
         <div className="pt-2 pb-1">
           <div className="relative flex items-center justify-between">
             {STEPS.map((stepName, i) => {
@@ -339,8 +356,8 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
                   {/* Connecting line */}
                   {i < STEPS.length - 1 && (
                     <div
-                      className={`absolute top-2.5 left-1/2 w-full h-[2px] -z-0 transition-colors ${
-                        isPast ? 'bg-indigo-500/50' : 'bg-slate-800/80'
+                      className={`absolute top-3 left-1/2 w-full h-[2px] -z-0 transition-colors ${
+                        isPast ? 'bg-[#138808]' : 'bg-slate-200'
                       }`}
                     />
                   )}
@@ -348,21 +365,21 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
                   <div
                     className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${
                       isCurrent
-                        ? 'bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-110'
+                        ? 'bg-orange-600 border-orange-500 text-white shadow-md shadow-orange-600/30 scale-110'
                         : isPast
-                        ? 'bg-indigo-950 border-indigo-500/50 text-indigo-300'
-                        : 'bg-slate-900 border-slate-800 text-slate-600'
+                        ? 'bg-[#138808] border-green-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-400'
                     }`}
                   >
                     {isPast ? '✓' : stepIndex}
                   </div>
                   <span
-                    className={`mt-1.5 text-[10px] text-center font-medium leading-tight max-w-[56px] transition-colors ${
+                    className={`text-[10px] sm:text-xs font-bold mt-1.5 text-center transition-colors ${
                       isCurrent
-                        ? 'text-indigo-300 font-semibold'
+                        ? 'text-orange-700'
                         : isPast
-                        ? 'text-slate-400'
-                        : 'text-slate-600'
+                        ? 'text-green-800 font-semibold'
+                        : 'text-slate-400'
                     }`}
                   >
                     {stepName}
@@ -373,78 +390,161 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
           </div>
         </div>
 
-        {/* ── Status Message / Helper Note ────────────────────────────────────── */}
-        <div className="rounded-xl bg-slate-900/40 border border-white/5 px-3.5 py-2.5 flex items-start gap-2.5 text-xs text-slate-300">
-          <span className="text-sm shrink-0">{statusCfg.icon}</span>
-          <span className="leading-relaxed">{statusCfg.userMessage}</span>
-        </div>
+        {/* Media Attached by Citizen (Voice Notes & Photos distinguished) */}
+        {ticket.media_urls && ticket.media_urls.length > 0 && (() => {
+          const isAudio = (u: string) => {
+            const l = u.toLowerCase()
+            return l.endsWith('.webm') || l.endsWith('.wav') || l.endsWith('.mp3') || l.endsWith('.ogg') || l.endsWith('.m4a') || l.includes('recording') || l.includes('audio') || l.includes('voice')
+          }
+          const isImg = (u: string) => {
+            const l = u.toLowerCase()
+            return l.endsWith('.png') || l.endsWith('.jpg') || l.endsWith('.jpeg') || l.endsWith('.webp') || l.endsWith('.gif') || l.endsWith('.svg') || l.includes('.png') || l.includes('.jpg')
+          }
+          const getUrl = (u: string) => {
+            if (u.startsWith('http://') || u.startsWith('https://')) return u
+            const clean = u.replace(/^\/+/, '').replace(/^uploads\//, '')
+            return `/uploads/${clean}`
+          }
 
-        {/* ── Citizen Media (Photos or Voice Clips reported) ──────────────────── */}
-        {ticket.media_urls && ticket.media_urls.length > 0 && (
-          <div className="rounded-xl bg-slate-900/30 border border-white/5 p-3 space-y-2">
-            <p className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-              <span>📎</span>
-              <span>Citizen Attachments ({ticket.media_urls.length})</span>
-            </p>
-            <div className="flex flex-wrap gap-2 items-center">
-              {ticket.media_urls.map((url, i) => {
-                const isAudio = url.endsWith('.webm') || url.endsWith('.mp3') || url.endsWith('.wav')
-                const isImage = url.endsWith('.jpeg') || url.endsWith('.jpg') || url.endsWith('.png') || url.endsWith('.webp')
-                if (isAudio) {
-                  return (
-                    <div key={i} className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5">
-                      <span className="text-xs">🎙️ Audio Note</span>
-                      <audio controls className="h-6 w-44" src={`http://localhost:8000/${url.replace(/^\//, '')}`} />
-                    </div>
-                  )
-                }
-                return (
-                  <a
-                    key={i}
-                    href={`http://localhost:8000/${url.replace(/^\//, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg hover:bg-indigo-500/20 transition-colors"
-                  >
-                    <span>{isImage ? '🖼️' : '📄'}</span>
-                    <span>Evidence {i + 1}</span>
-                  </a>
-                )
-              })}
+          const voiceNotes = ticket.media_urls.filter(isAudio)
+          const photos = ticket.media_urls.filter(u => isImg(u) && !isAudio(u))
+          const others = ticket.media_urls.filter(u => !isAudio(u) && !isImg(u))
+
+          return (
+            <div className="pt-1 space-y-3">
+              {/* Voice Notes Section */}
+              {voiceNotes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-orange-900 flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span>Citizen Voice Note{voiceNotes.length > 1 ? 's' : ''} ({voiceNotes.length})</span>
+                  </p>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {voiceNotes.map((url, idx) => {
+                      const mediaSrc = getUrl(url)
+                      return (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50/90 via-white/80 to-amber-50/90 border border-orange-200/90 shadow-sm backdrop-blur-xl flex flex-col gap-2"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-orange-950">
+                              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                              <span>Audio Recording #{idx + 1}</span>
+                            </span>
+                            <a
+                              href={mediaSrc}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-semibold text-orange-600 hover:text-orange-800 hover:underline flex items-center gap-0.5"
+                            >
+                              <span>Open</span>
+                              <span>↗</span>
+                            </a>
+                          </div>
+                          <audio
+                            controls
+                            preload="metadata"
+                            src={mediaSrc}
+                            className="w-full h-8 rounded-lg accent-orange-600 focus:outline-none"
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Photos Evidence Section */}
+              {photos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>📷</span>
+                    <span>Attached Evidence Photo{photos.length > 1 ? 's' : ''} ({photos.length})</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {photos.map((url, idx) => {
+                      const mediaSrc = getUrl(url)
+                      return (
+                        <a
+                          key={idx}
+                          href={mediaSrc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center gap-2 text-xs font-semibold text-orange-900 bg-orange-50/80 border border-orange-200 px-3 py-1.5 rounded-xl hover:bg-orange-100 transition-all shadow-sm"
+                        >
+                          <img
+                            src={mediaSrc}
+                            alt={`Evidence ${idx + 1}`}
+                            className="w-5 h-5 object-cover rounded border border-orange-200"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none' }}
+                          />
+                          <span>Photo #{idx + 1}</span>
+                          <span className="text-[10px] text-orange-600">↗</span>
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Other Media / Documents */}
+              {others.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {others.map((url, idx) => {
+                    const mediaSrc = getUrl(url)
+                    return (
+                      <a
+                        key={idx}
+                        href={mediaSrc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        <span>📎 Document #{idx + 1}</span>
+                        <span>↗</span>
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )
+        })()}
 
-        {/* ── WORKERS & COMPLETION SHOWCASE (Post-completion / Piloting) ──────── */}
+        {/* WORKERS & COMPLETION SHOWCASE (Post-completion) */}
         {showWorkersSection && (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-4 space-y-3.5">
+          <div className="rounded-2xl border border-green-300 bg-green-50/70 p-4 space-y-3.5 shadow-sm">
             {/* Header banner */}
-            <div className="flex items-center justify-between pb-2 border-b border-emerald-500/15">
+            <div className="flex items-center justify-between pb-2 border-b border-green-200">
               <div className="flex items-center gap-2">
-                <span className="text-base">👷</span>
+                <span className="text-base">🛠️</span>
                 <div>
-                  <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-green-900 uppercase tracking-wider">
                     {isPiloting ? 'Submitted Resolution & Credited Team' : 'Resolution Team & Attribution'}
                   </h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-600">
                     {ticket.assigned_institution_name
-                      ? `Staff and specialists from ${ticket.assigned_institution_name}`
+                      ? `Staff and specialists deployed from ${ticket.assigned_institution_name}`
                       : 'Institution specialists credited for resolving this issue'}
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-green-800 border border-green-300 shadow-sm">
                 {isPiloting ? 'Pending Verification' : 'Verified Resolution'}
               </span>
             </div>
 
             {/* Completion Notes */}
             {ticket.completion_notes && (
-              <div className="bg-slate-950/60 rounded-xl p-3 border border-emerald-500/10">
-                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
-                  📋 Resolution Summary
+              <div className="bg-white rounded-xl p-3.5 border border-green-200 shadow-sm">
+                <p className={`${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-green-900 uppercase tracking-wider mb-1 flex items-center gap-1`}>
+                  <span>📋</span>
+                  <span>Work Completion Summary</span>
                 </p>
-                <p className="text-xs text-slate-200 leading-relaxed">
+                <p className={isInstitution ? "text-sm sm:text-base text-slate-800 leading-relaxed font-normal" : "text-xs sm:text-sm text-slate-800 leading-relaxed font-normal"}>
                   {ticket.completion_notes}
                 </p>
               </div>
@@ -453,26 +553,24 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
             {/* Workers Cards */}
             {hasWorkers && (
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
-                  <span>👥</span>
+                <p className={`${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-slate-800 flex items-center gap-1.5`}>
+                  <span>👷</span>
                   <span>Assigned Personnel ({ticket.worker_credits?.length})</span>
                 </p>
                 <div className="grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
                   {ticket.worker_credits?.map((worker, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-3 bg-slate-900/80 border border-emerald-500/20 rounded-xl p-2.5 hover:border-emerald-500/40 transition-colors"
+                      className="flex items-center gap-3 bg-white border border-green-200 rounded-xl p-2.5 shadow-sm hover:border-green-400 transition-colors"
                     >
-                      {/* Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/30">
+                      <div className="w-8 h-8 rounded-full bg-[#138808] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
                         {worker.name.charAt(0).toUpperCase()}
                       </div>
-                      {/* Details */}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-white truncate">
+                        <p className={`${isInstitution ? 'text-sm' : 'text-xs'} font-bold text-slate-900 truncate`}>
                           {worker.name}
                         </p>
-                        <p className="text-[10px] font-medium text-emerald-400 truncate">
+                        <p className={`${isInstitution ? 'text-xs' : 'text-[11px]'} font-semibold text-green-800 truncate`}>
                           {worker.role}
                         </p>
                       </div>
@@ -484,26 +582,26 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
 
             {/* Proof Photos & Documents */}
             {ticket.proof_media_urls && ticket.proof_media_urls.length > 0 && (
-              <div className="pt-2 border-t border-emerald-500/15 space-y-2">
-                <p className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5">
-                  <span>📸</span>
+              <div className="pt-2 border-t border-green-200 space-y-2">
+                <p className="text-xs font-bold text-green-900 flex items-center gap-1.5">
+                  <span>📎</span>
                   <span>Proof of Completion ({ticket.proof_media_urls.length} file{ticket.proof_media_urls.length !== 1 ? 's' : ''})</span>
                 </p>
                 <div className="flex flex-wrap gap-2.5">
                   {ticket.proof_media_urls.map((url, i) => {
                     const isImage = url.endsWith('.jpeg') || url.endsWith('.jpg') || url.endsWith('.png') || url.endsWith('.webp')
-                    const fullUrl = `http://localhost:8000/${url.replace(/^\//, '')}`
+                    const fullUrl = url.startsWith('http') ? url : `/uploads/${url.replace(/^\/+/, '').replace(/^uploads\//, '')}`
                     return (
                       <a
                         key={i}
                         href={fullUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 rounded-xl hover:bg-emerald-500/20 transition-all hover:scale-[1.02]"
+                        className="inline-flex items-center gap-2 text-xs font-bold text-green-800 bg-white border border-green-300 px-3.5 py-1.5 rounded-xl hover:bg-green-50 transition-all shadow-sm"
                       >
                         <span>{isImage ? '🖼️' : '📄'}</span>
                         <span>View Proof {i + 1}</span>
-                        <span className="text-[10px] text-emerald-400">↗</span>
+                        <span className="text-[10px] text-green-600">↗</span>
                       </a>
                     )
                   })}
@@ -513,45 +611,40 @@ export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketD
           </div>
         )}
 
-        {/* ── Page-specific Actions Slot ──────────────────────────────────────── */}
+        {/* Page-specific Actions Slot (e.g. RateTicket) */}
         {actionsSlot && (
-          <div className="pt-2 border-t border-white/5">
+          <div className="pt-2">
             {actionsSlot}
           </div>
         )}
 
-        {/* ── Collapsible Activity Timeline ───────────────────────────────────── */}
+        {/* Collapsible Activity Timeline */}
         {ticket.events && ticket.events.length > 0 && (
-          <details className="group pt-2 border-t border-white/5">
-            <summary className="cursor-pointer text-xs font-semibold text-slate-500 hover:text-slate-400 flex items-center justify-between list-none py-1 select-none">
+          <details className="group pt-2 border-t border-slate-200">
+            <summary className="cursor-pointer text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center justify-between list-none py-1 select-none">
               <span className="flex items-center gap-1.5">
-                <span>🕒</span>
-                <span>Activity Timeline ({ticket.events.length} event{ticket.events.length !== 1 ? 's' : ''})</span>
+                <span>⏱️</span>
+                <span>Audit Timeline ({ticket.events.length} event{ticket.events.length !== 1 ? 's' : ''})</span>
               </span>
-              <span className="text-slate-600 transition-transform duration-200 group-open:rotate-180">
-                ▾
+              <span className="text-slate-500 transition-transform duration-200 group-open:rotate-180">
+                ▼
               </span>
             </summary>
             <div className="mt-3 pl-2 pr-1 pb-1">
-              <ol className="relative border-l border-slate-800 ml-1.5 space-y-2.5">
+              <ol className="relative border-l border-slate-300 ml-1.5 space-y-3">
                 {[...ticket.events].reverse().map((event, i) => (
                   <li key={i} className="pl-4 relative">
-                    <span className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full border border-slate-700 bg-slate-900" />
+                    <span className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full border border-orange-500 bg-orange-600" />
                     <div className="text-xs">
-                      <span className="font-semibold text-slate-300">
+                      <span className="font-bold text-slate-900 capitalize">
                         {String(event.type).replace(/_/g, ' ')}
                       </span>
-                      <span className="text-slate-500 text-[11px] ml-1.5">
-                        {new Date(event.time).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                      <span suppressHydrationWarning className="text-slate-500 text-[11px] ml-2">
+                        {formatEventDate(event.time)}
                       </span>
                     </div>
                     {event.notes && (
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-slate-600 mt-0.5 leading-relaxed font-normal">
                         {event.notes}
                       </p>
                     )}
