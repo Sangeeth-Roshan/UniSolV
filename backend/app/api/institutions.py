@@ -87,7 +87,7 @@ async def get_public_institution_leaderboard(
 
 @router.get("")
 async def list_institutions(
-    _current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(require_role([UserRole.government_officer])),
     db: AsyncSession = Depends(get_db),
 ):
     """List all institutions (for admin assignment UI).
@@ -116,13 +116,20 @@ async def list_institutions(
 @router.get("/{institution_id}/reputation")
 async def get_institution_reputation(
     institution_id: int,
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Return the global and per-domain reputation scores for an institution.
 
-    Requires: any authenticated user.
+    Access control:
+    * institution roles — only their own institution's reputation
+    * government_officer — any institution
     """
+    # Institution users can only see their own institution's reputation
+    if current_user.role in (UserRole.university_admin, UserRole.student, UserRole.company):
+        if current_user.institution_id != institution_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
     institution = await db.get(Institution, institution_id)
     if not institution:
         raise HTTPException(status_code=404, detail="Institution not found")
