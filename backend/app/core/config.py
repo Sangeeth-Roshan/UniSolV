@@ -15,8 +15,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
+    # Super-admin dashboard credentials
+    SUPER_ADMIN_EMAIL: str = "superadmin@unisolv.internal"
+    SUPER_ADMIN_PASSWORD: str = "SuperAdmin@2026!"
+
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     # ---------------------------------------------------------------------------
     # ML / Classification

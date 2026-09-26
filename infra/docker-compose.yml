@@ -52,6 +52,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: change-me-in-production
       ENVIRONMENT: development
+      SUPER_ADMIN_EMAIL: superadmin@unisolv.internal
+      SUPER_ADMIN_PASSWORD: SuperAdmin@2026!
     ports:
       - "8000:8000"
     depends_on:
@@ -68,7 +70,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Next.js Frontend
+  # Next.js Frontend (main app)
   # ---------------------------------------------------------------------------
   frontend:
     build:
@@ -88,5 +90,26 @@ services:
     depends_on:
       - backend
 
+  # ---------------------------------------------------------------------------
+  # Next.js Admin Dashboard (port 3001)
+  # ---------------------------------------------------------------------------
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+    container_name: unisolv-admin
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../admin:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
+

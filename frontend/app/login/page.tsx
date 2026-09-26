@@ -4,14 +4,33 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { loginAction } from '@/app/actions/auth'
 
+const DEMO_CREDENTIALS: Record<string, { email: string; password: string }> = {
+  citizen:     { email: 'citizen@test.com',     password: 'demo123' },
+  institution: { email: 'uni@centraltech.edu',   password: 'demo123' },
+  government:  { email: 'admin@gov.in',          password: 'demo123' },
+}
+
 export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<'citizen' | 'institution' | 'government' | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(formData: FormData) {
+  function selectRole(role: 'citizen' | 'institution' | 'government') {
+    setSelectedRole(role)
+    setEmail(DEMO_CREDENTIALS[role].email)
+    setPassword(DEMO_CREDENTIALS[role].password)
+    setError(null)
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setLoading(true)
     setError(null)
+    const formData = new FormData()
+    formData.set('email', email)
+    formData.set('password', password)
     const result = await loginAction(formData)
     
     if (result?.error) {
@@ -64,7 +83,7 @@ export default function LoginPage() {
             <div className="space-y-4">
               <button
                 type="button"
-                onClick={() => setSelectedRole('citizen')}
+                onClick={() => selectRole('citizen')}
                 className="w-full group flex items-center justify-between p-5 border border-orange-200 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-4">
@@ -73,7 +92,7 @@ export default function LoginPage() {
                   </div>
                   <div className="text-left">
                     <h3 className="text-base font-bold text-slate-900">Citizen</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">Report issues & track status</p>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">Report issues &amp; track status</p>
                   </div>
                 </div>
                 <svg className="w-5 h-5 text-orange-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -81,7 +100,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => setSelectedRole('institution')}
+                onClick={() => selectRole('institution')}
                 className="w-full group flex items-center justify-between p-5 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-4">
@@ -98,7 +117,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => setSelectedRole('government')}
+                onClick={() => selectRole('government')}
                 className="w-full group flex items-center justify-between p-5 border border-green-200 rounded-xl bg-green-50 hover:bg-green-100 transition-colors shadow-sm"
               >
                 <div className="flex items-center gap-4">
@@ -114,7 +133,7 @@ export default function LoginPage() {
               </button>
             </div>
           ) : (
-            <form action={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <button 
                 type="button"
                 onClick={() => { setSelectedRole(null); setError(null); }}
@@ -140,7 +159,8 @@ export default function LoginPage() {
                 <input 
                   name="email" 
                   type="email" 
-                  defaultValue={selectedRole === 'citizen' ? 'citizen@test.com' : selectedRole === 'institution' ? 'uni@centraltech.edu' : 'admin@gov.in'}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                   required 
                   className="block w-full px-4 py-3.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-shadow shadow-sm" 
                   placeholder="name@example.com" 
@@ -154,7 +174,8 @@ export default function LoginPage() {
                 <input 
                   name="password" 
                   type="password" 
-                  defaultValue="demo123"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                   required 
                   className="block w-full px-4 py-3.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-shadow shadow-sm" 
                   placeholder="Password" 
@@ -170,6 +191,7 @@ export default function LoginPage() {
               </button>
             </form>
           )}
+
 
           <div className="mt-8 pt-4 border-t border-slate-200 text-center text-xs text-slate-600">
             Don&apos;t have an account?{' '}
