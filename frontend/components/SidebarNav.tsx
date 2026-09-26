@@ -58,6 +58,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["government"],
   },
   {
+    href: "/dashboard/government/applications",
+    label: "Institution Applications",
+    icon: "",
+    roles: ["government"],
+  },
+  {
     href: "/login",
     label: "Login / Sign Up",
     icon: "🔑",
@@ -141,6 +147,7 @@ function NavIcon({ href }: { href: string }) {
     case "/dashboard/institution":          return <IconBuildingOffice />;
     case "/dashboard/government":           return <IconChartBar />;
     case "/dashboard/government/analytics": return <IconPresentationChartLine />;
+    case "/dashboard/government/applications": return <IconBuildingOffice />;
     case "/login":                          return <IconArrowRightOnRect />;
     default:                                return <IconGlobe />;
   }

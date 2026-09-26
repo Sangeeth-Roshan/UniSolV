@@ -42,24 +42,8 @@ def upgrade() -> None:
     )
 
     # -- Extend the event_type ENUM -----------------------------------------------
-    # ALTER TYPE ... ADD VALUE cannot run inside a transaction in PostgreSQL.
-    # The COMMIT/BEGIN trick is not safe with asyncpg (raises subtransaction error).
-    # Instead, drop into AUTOCOMMIT mode for the two ALTER TYPE statements, then
-    # the enclosing Alembic transaction resumes normally for subsequent ops.
-    from alembic import context
-    if context.is_offline_mode():
-        op.execute("ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'hotspot_detected'")
-        op.execute("ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'cluster_merged'")
-    else:
-        bind = op.get_bind()
-        bind.execute(sa.text("SET LOCAL synchronous_commit TO off"))  # no-op warmup
-        with bind.execution_options(isolation_level="AUTOCOMMIT"):
-            bind.execute(sa.text(
-                "ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'hotspot_detected'"
-            ))
-            bind.execute(sa.text(
-                "ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'cluster_merged'"
-            ))
+    op.execute("ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'hotspot_detected'")
+    op.execute("ALTER TYPE event_type ADD VALUE IF NOT EXISTS 'cluster_merged'")
 
 
 def downgrade() -> None:

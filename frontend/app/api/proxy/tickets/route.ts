@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': request.headers.get('Content-Type') || '',
       },
       body: request.body,
-      // @ts-ignore - Next.js needs this for streaming request bodies
+      // @ts-expect-error - Next.js needs this for streaming request bodies
       duplex: 'half',
     })
 

@@ -2,12 +2,10 @@
 
 import { useState } from 'react'
 import { loginAction } from '@/app/actions/auth'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -115,9 +113,9 @@ export default function LoginPage() {
           </form>
           
           <div className="mt-8 text-center text-sm text-slate-500">
-            Don't have an account?{' '}
-            <a href="#" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
-              Contact administrator
+            Don&apos;t have an account?{' '}
+            <a href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+              Create one →
             </a>
           </div>
         </div>

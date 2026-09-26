@@ -259,6 +259,9 @@ async def get_tickets(
                 "current_load": inst.current_load,
                 "domains_of_expertise": inst.domains_of_expertise or [],
             } if inst else None,
+            "assigned_institution_id": t.assigned_institution_id,
+            "proof_media_urls": getattr(t, "proof_media_urls", []),
+            "completion_notes": getattr(t, "completion_notes", None),
             "events": [
                 {
                     "type": e.event_type.value if hasattr(e.event_type, 'value') else str(e.event_type),
@@ -320,16 +323,81 @@ async def manual_assign_ticket(
 
 
 # ---------------------------------------------------------------------------
+# GET /api/tickets/{id}  — single ticket detail (role-filtered access)
+# ---------------------------------------------------------------------------
+
+@router.get("/{ticket_id}")
+async def get_ticket(
+    ticket_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return full detail of a single ticket.
+
+    Access control:
+    * citizens — own tickets only
+    * institution roles — tickets assigned to their institution
+    * government_officer — all tickets
+    """
+    result = await db.execute(
+        select(Ticket)
+        .options(
+            selectinload(Ticket.events),
+            selectinload(Ticket.assigned_institution),
+            selectinload(Ticket.attributions),
+        )
+        .where(Ticket.id == ticket_id)
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if current_user.role == UserRole.citizen and ticket.reporter_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    elif current_user.role in (UserRole.university_admin, UserRole.student, UserRole.company):
+        if ticket.assigned_institution_id != current_user.institution_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    return {
+        "id": ticket.id,
+        "title": ticket.title,
+        "description": ticket.description,
+        "domain": ticket.domain,
+        "status": ticket.status,
+        "severity_score": ticket.severity_score,
+        "media_urls": ticket.media_urls,
+        "proof_media_urls": ticket.proof_media_urls,
+        "completion_notes": ticket.completion_notes,
+        "assigned_institution_id": ticket.assigned_institution_id,
+        "assigned_institution_name": ticket.assigned_institution.name if ticket.assigned_institution else None,
+        "sla_deadline": ticket.sla_deadline,
+        "created_at": ticket.created_at,
+        "events": [
+            {"type": e.event_type, "notes": e.notes, "time": e.created_at, "actor_id": e.actor_id}
+            for e in ticket.events
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
 # POST /api/tickets/{id}/dispatch  — government_officer only
 # ---------------------------------------------------------------------------
+
+class DispatchPayload(BaseModel):
+    institution_id: Optional[int] = None  # if provided, assign directly
+
 
 @router.post("/{ticket_id}/dispatch")
 async def dispatch_ticket_endpoint(
     ticket_id: int,
+    payload: DispatchPayload = DispatchPayload(),
     current_user: User = Depends(require_role([UserRole.government_officer])),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually dispatch a ticket to the best-ranked institution.
+    """Dispatch a ticket to an institution.
+
+    If ``institution_id`` is provided in the request body, assigns directly (manual).
+    Otherwise uses AI ranking to select the best institution.
 
     Requires: ``government_officer``.
     """
@@ -337,9 +405,238 @@ async def dispatch_ticket_endpoint(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    await dispatch_ticket(ticket, db)
+    if payload.institution_id:
+        # Manual assignment
+        institution = await db.get(Institution, payload.institution_id)
+        if not institution:
+            raise HTTPException(status_code=404, detail="Institution not found")
+
+        # Decrement old institution load if previously assigned
+        if ticket.assigned_institution_id and ticket.assigned_institution_id != payload.institution_id:
+            old_inst = await db.get(Institution, ticket.assigned_institution_id)
+            if old_inst and (old_inst.current_load or 0) > 0:
+                old_inst.current_load -= 1
+
+        ticket.assigned_institution_id = payload.institution_id
+        ticket.status = TicketStatus.routed
+        institution.current_load = (institution.current_load or 0) + 1
+
+        from datetime import timedelta
+        sla_hours = 48.0
+        ticket.sla_deadline = datetime.now(timezone.utc) + timedelta(hours=sla_hours)
+
+        event = TicketEvent(
+            ticket_id=ticket.id,
+            event_type=EventType.routed,
+            actor_id=current_user.id,
+            notes=f"Manually assigned to institution {payload.institution_id} by govt officer {current_user.id}.",
+        )
+        db.add(event)
+    else:
+        # AI-powered auto dispatch
+        await dispatch_ticket(ticket, db)
+
     await db.commit()
     return {"status": "dispatched", "assigned_to": ticket.assigned_institution_id}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/start  — institution members only
+# ---------------------------------------------------------------------------
+
+@router.post("/{ticket_id}/start")
+async def start_ticket(
+    ticket_id: int,
+    current_user: User = Depends(
+        require_role([UserRole.university_admin, UserRole.student, UserRole.company])
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Institution marks a ticket as in_progress.
+
+    Requires: ``university_admin``, ``student``, or ``company``.
+    """
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id).with_for_update())
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.assigned_institution_id != current_user.institution_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if ticket.status not in (TicketStatus.routed, TicketStatus.accepted):
+        raise HTTPException(status_code=400, detail="Ticket must be routed or accepted to start")
+
+    ticket.status = TicketStatus.in_progress
+    event = TicketEvent(
+        ticket_id=ticket.id,
+        event_type=EventType.in_progress,
+        actor_id=current_user.id,
+        notes=f"Work started by user {current_user.id} ({current_user.name}).",
+    )
+    db.add(event)
+    await db.commit()
+    return {"status": "in_progress", "ticket_id": ticket_id}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/complete  — institution members only (multipart)
+# ---------------------------------------------------------------------------
+
+@router.post("/{ticket_id}/complete")
+async def complete_ticket(
+    ticket_id: int,
+    completion_notes: str = Form(""),
+    worker_names: str = Form(""),   # comma-separated
+    worker_roles: str = Form(""),   # comma-separated
+    proof: Optional[UploadFile] = File(None),
+    current_user: User = Depends(
+        require_role([UserRole.university_admin, UserRole.student, UserRole.company])
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Institution submits proof of completion.
+
+    Accepts an optional proof file upload along with completion notes and worker
+    credit metadata. Transitions ticket to ``piloting`` (pending govt verification).
+
+    Requires: ``university_admin``, ``student``, or ``company``.
+    """
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id).with_for_update())
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.assigned_institution_id != current_user.institution_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if ticket.status not in (TicketStatus.in_progress, TicketStatus.accepted):
+        raise HTTPException(status_code=400, detail="Ticket must be in_progress or accepted")
+
+    proof_urls = list(ticket.proof_media_urls) if ticket.proof_media_urls else []
+    if proof and proof.filename:
+        proof_path = f"uploads/proof_{datetime.now().timestamp()}_{proof.filename}"
+        os.makedirs("uploads", exist_ok=True)
+        async with aiofiles.open(proof_path, "wb") as out_file:
+            content = await proof.read()
+            await out_file.write(content)
+        proof_urls.append(proof_path)
+
+    ticket.proof_media_urls = proof_urls
+    ticket.completion_notes = completion_notes
+    ticket.status = TicketStatus.piloting  # pending govt verification
+
+    # Build worker credits list
+    names = [n.strip() for n in worker_names.split(",") if n.strip()]
+    roles = [r.strip() for r in worker_roles.split(",") if r.strip()]
+    credits_list = [
+        {"name": name, "role": roles[i] if i < len(roles) else "contributor"}
+        for i, name in enumerate(names)
+    ]
+
+    # Update or create attribution record
+    attr_res = await db.execute(select(Attribution).where(Attribution.ticket_id == ticket_id))
+    attribution = attr_res.scalars().first()
+    if not attribution:
+        attribution = Attribution(
+            ticket_id=ticket_id,
+            reporter_id=ticket.reporter_id,
+            institution_id=ticket.assigned_institution_id,
+            worker_credits=credits_list,
+        )
+        db.add(attribution)
+    else:
+        attribution.worker_credits = credits_list
+
+    event = TicketEvent(
+        ticket_id=ticket.id,
+        event_type=EventType.completed,
+        actor_id=current_user.id,
+        notes=f"Completion submitted by {current_user.name}. Notes: {completion_notes[:200] if completion_notes else 'N/A'}",
+    )
+    db.add(event)
+    await db.commit()
+    return {"status": "completed", "ticket_id": ticket_id, "proof_count": len(proof_urls)}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/verify  — government_officer only
+# ---------------------------------------------------------------------------
+
+@router.post("/{ticket_id}/verify")
+async def verify_ticket(
+    ticket_id: int,
+    current_user: User = Depends(require_role([UserRole.government_officer])),
+    db: AsyncSession = Depends(get_db),
+):
+    """Government officer verifies completed work.
+
+    Transitions ticket from ``piloting`` to ``verified``.
+
+    Requires: ``government_officer``.
+    """
+    ticket = await db.get(Ticket, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.status != TicketStatus.piloting:
+        raise HTTPException(status_code=400, detail="Ticket must be in piloting/pending-verification state")
+
+    ticket.status = TicketStatus.verified
+    event = TicketEvent(
+        ticket_id=ticket.id,
+        event_type=EventType.verified,
+        actor_id=current_user.id,
+        notes=f"Resolution verified by government officer {current_user.id} ({current_user.name}).",
+    )
+    db.add(event)
+    await db.commit()
+    return {"status": "verified", "ticket_id": ticket_id}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/rate  — citizen only
+# ---------------------------------------------------------------------------
+
+class RatePayload(BaseModel):
+    score: int  # 1-5
+    comment: Optional[str] = None
+
+
+@router.post("/{ticket_id}/rate")
+async def rate_ticket(
+    ticket_id: int,
+    payload: RatePayload,
+    current_user: User = Depends(require_role([UserRole.citizen])),
+    db: AsyncSession = Depends(get_db),
+):
+    """Citizen rates the resolution of their ticket (1–5 stars).
+
+    Requires: ``citizen``.
+    """
+    from app.models.rating import Rating
+
+    if not 1 <= payload.score <= 5:
+        raise HTTPException(status_code=400, detail="Score must be between 1 and 5")
+
+    ticket = await db.get(Ticket, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.reporter_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only rate your own tickets")
+    if ticket.status not in (TicketStatus.verified, TicketStatus.closed):
+        raise HTTPException(status_code=400, detail="Ticket must be verified or closed to rate")
+
+    existing = await db.execute(
+        select(Rating).where(Rating.ticket_id == ticket_id, Rating.rated_by == current_user.id)
+    )
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="You have already rated this ticket")
+
+    rating = Rating(
+        ticket_id=ticket_id,
+        rated_by=current_user.id,
+        score=payload.score,
+        comment=payload.comment,
+    )
+    db.add(rating)
+    await db.commit()
+    return {"status": "rated", "score": payload.score}
 
 
 # ---------------------------------------------------------------------------

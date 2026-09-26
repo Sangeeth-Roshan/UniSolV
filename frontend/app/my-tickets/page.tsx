@@ -1,13 +1,14 @@
 import { cookies } from 'next/headers'
+import { RateTicket } from './RateTicket'
 
-// ── Types ────────────────────────────────────────────────────────────────────
 interface TicketEvent { type: string; notes: string | null; time: string }
 interface Ticket {
   id: number; title: string; description: string; domain: string | null;
-  status: string; severity_score: number | null; contact_phone?: string | null; events: TicketEvent[]
+  status: string; severity_score: number | null; events: TicketEvent[]; contact_phone?: string | null;
+  proof_media_urls: string[]; completion_notes: string | null;
+  assigned_institution_id: number | null;
 }
 
-// ── Status badge helper ───────────────────────────────────────────────────────
 function statusBadge(status: string) {
   const styles: Record<string, string> = {
     pending_validation: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
@@ -22,6 +23,20 @@ function statusBadge(status: string) {
   return styles[status] ?? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
 }
 
+function statusMessage(status: string): string {
+  const messages: Record<string, string> = {
+    pending_validation: '⏳ Your ticket is pending review by the government.',
+    routed: '🚀 Your ticket has been assigned to an institution.',
+    accepted: '🤝 The institution has accepted your ticket and will begin work soon.',
+    in_progress: '🔧 Work is currently in progress on your issue.',
+    piloting: '🔍 The institution has submitted their solution — awaiting government verification.',
+    verified: '✅ The resolution has been verified! Please rate your experience.',
+    closed: '🎉 Your issue has been resolved and closed.',
+    escalated: '⚠️ This ticket was escalated due to an SLA breach.',
+  }
+  return messages[status] ?? ''
+}
+
 async function getTickets() {
   const token = cookies().get('token')?.value
   if (!token) return []
@@ -33,9 +48,7 @@ async function getTickets() {
     })
     if (!res.ok) return []
     return res.json()
-  } catch {
-    return []
-  }
+  } catch { return [] }
 }
 
 export default async function MyTicketsPage() {
@@ -53,9 +66,12 @@ export default async function MyTicketsPage() {
           <div key={ticket.id} className="glass-card p-5">
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-base text-white truncate">{ticket.title}</h3>
+                  <span className="text-xs text-slate-600">#{ticket.id}</span>
+                </div>
                 <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{ticket.description}</p>
-                <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
+                <div className="mt-2 flex items-center gap-3 flex-wrap">
                   {ticket.domain && (
                     <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
                       {ticket.domain}
@@ -66,20 +82,47 @@ export default async function MyTicketsPage() {
                       Severity: <span className="text-slate-300">{Number(ticket.severity_score).toFixed(2)}</span>
                     </span>
                   )}
-                  {ticket.contact_phone && (
-                    <span className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-900/80 border border-white/5 px-2.5 py-0.5 rounded-md">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span>Contact: <span className="text-slate-200 font-mono font-medium">{ticket.contact_phone}</span></span>
-                    </span>
-                  )}
                 </div>
               </div>
               <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(ticket.status)}`}>
                 {ticket.status.replace(/_/g, ' ')}
               </span>
             </div>
+
+            {/* Status message */}
+            {statusMessage(ticket.status) && (
+              <div className="mt-3 text-sm text-slate-400 bg-slate-900/40 rounded-lg px-3 py-2">
+                {statusMessage(ticket.status)}
+              </div>
+            )}
+
+            {/* Proof / Resolution */}
+            {ticket.completion_notes && (
+              <div className="mt-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <p className="text-xs font-bold text-emerald-400 mb-1">📋 Resolution Summary</p>
+                <p className="text-sm text-slate-300">{ticket.completion_notes}</p>
+              </div>
+            )}
+            {ticket.proof_media_urls && ticket.proof_media_urls.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-bold text-emerald-400 mb-2">📸 Proof of Completion</p>
+                <div className="flex flex-wrap gap-2">
+                  {ticket.proof_media_urls.map((url, i) => (
+                    <a key={i} href={`http://localhost:8000/${url}`} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-1 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded hover:bg-emerald-500/20 transition-colors">
+                      📎 View Proof {i + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rating form */}
+            {(ticket.status === 'verified' || ticket.status === 'closed') && (
+              <div className="mt-4">
+                <RateTicket ticketId={ticket.id} />
+              </div>
+            )}
 
             {/* Timeline */}
             {ticket.events?.length > 0 && (

@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, get_password_hash
 from app.models.user import User
+from app.models.enums import UserRole
 from app.core.config import settings
 from pydantic import BaseModel
 
@@ -15,6 +16,34 @@ router = APIRouter()
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+@router.post("/register")
+async def register(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a new citizen account."""
+    existing = await db.execute(select(User).where(User.email == body.email))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = User(
+        name=body.name,
+        email=body.email,
+        password_hash=get_password_hash(body.password),
+        role=UserRole.citizen,
+    )
+    db.add(user)
+    await db.commit()
+    return {"status": "registered", "email": body.email}
+
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(

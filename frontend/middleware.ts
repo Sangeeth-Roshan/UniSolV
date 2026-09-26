@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value
   const { pathname } = request.nextUrl
   
-  if (!token && pathname !== '/login') {
+  if (!token && pathname !== '/login' && pathname !== '/register' && !pathname.startsWith('/register/')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -59,6 +59,8 @@ export const config = {
     '/submit',
     '/my-tickets',
     '/dashboard/:path*',
-    '/login'
+    '/login',
+    '/register',
+    '/register/:path*',
   ]
 }

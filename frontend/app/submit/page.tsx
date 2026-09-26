@@ -349,7 +349,7 @@ export default function SubmitPage() {
         setServerError(errorMsg)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    } catch (err) {
+    } catch {
       setServerError('Network error. Please ensure the backend is running.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
@@ -445,6 +445,13 @@ export default function SubmitPage() {
                   <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
                     <span className="text-xs font-semibold text-emerald-300 block mb-0.5">🇮🇳 हिन्दी अनुवाद (Hindi):</span>
                     <span className="text-slate-200">{submitResult.transcription_hindi}</span>
+                  </div>
+                )}
+
+                {!submitResult.transcription_english && !submitResult.transcription_hindi && submitResult.transcription && (
+                  <div className="text-sm bg-slate-900/80 p-2.5 rounded-xl border border-white/5">
+                    <span className="text-xs font-semibold text-slate-400 block mb-0.5">Voice Transcription:</span>
+                    <span className="text-slate-300 font-mono">&quot;{submitResult.transcription}&quot;</span>
                   </div>
                 )}
               </div>
