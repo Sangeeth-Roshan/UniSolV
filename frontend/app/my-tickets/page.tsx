@@ -20,9 +20,10 @@ async function getTickets(): Promise<TicketData[]> {
 
 export default async function MyTicketsPage() {
   const tickets = await getTickets()
+
   const total = tickets.length
-  const openCount = tickets.filter((t) => !['closed', 'verified'].includes(t.status)).length
-  const resolvedCount = tickets.filter((t) => ['closed', 'verified'].includes(t.status)).length
+  const openCount = tickets.filter((t) => !['verified', 'closed'].includes(t.status)).length
+  const resolvedCount = tickets.filter((t) => ['verified', 'closed'].includes(t.status)).length
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

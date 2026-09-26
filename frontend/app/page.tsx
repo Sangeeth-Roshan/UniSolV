@@ -103,7 +103,9 @@ const steps = [
   },
 ]
 
-export default function OverviewPage() {
+import { useState, useEffect } from 'react'
+
+function LandingPage() {
   return (
     <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-slate-950 text-white font-sans">
 
@@ -308,4 +310,188 @@ export default function OverviewPage() {
 
     </div>
   )
+}
+
+function GovtOverview() {
+  const [stats, setStats] = useState<any>(null)
+  const [tickets, setTickets] = useState<any[]>([])
+  const [hotspots, setHotspots] = useState<any[]>([])
+  const [slaRisk, setSlaRisk] = useState<any>(null)
+  
+  useEffect(() => {
+    const fetchGovtData = async () => {
+      try {
+        const [sumRes, tickRes, hotRes, slaRes] = await Promise.all([
+          fetch('/api/analytics/summary'),
+          fetch('/api/tickets'),
+          fetch('/api/analytics/hotspots'),
+          fetch('/api/analytics/sla-risk')
+        ])
+        if (sumRes.ok) setStats(await sumRes.json())
+        if (tickRes.ok) {
+          const t = await tickRes.json()
+          setTickets(t.slice(0, 5))
+        }
+        if (hotRes.ok) setHotspots(await hotRes.json())
+        if (slaRes.ok) setSlaRisk(await slaRes.json())
+      } catch (e) { console.error(e) }
+    }
+    fetchGovtData()
+  }, [])
+
+  return (
+    <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-slate-950 text-white px-8 py-10">
+      <div className="space-y-6 animate-fade-in-up max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Jharkhand State Command Center</h1>
+            <p className="text-slate-400 mt-1">Live overview of statewide civic issues, AI routing status, and resolutions.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/government" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 text-sm">
+              Open Action Center
+            </Link>
+          </div>
+        </div>
+
+        {/* Priority Alerts Row */}
+        {(hotspots.length > 0 || (slaRisk && slaRisk.summary.breached_count > 0)) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {hotspots.length > 0 && (
+              <div className="rounded-2xl bg-violet-500/10 border border-violet-500/20 p-4 flex gap-4 items-center">
+                <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-violet-300">Active Geographic Hotspots Detected</h3>
+                  <p className="text-xs text-slate-400 mt-0.5"><span className="text-white font-bold">{hotspots.length}</span> critical clusters require immediate attention.</p>
+                </div>
+              </div>
+            )}
+            
+            {slaRisk && slaRisk.summary.breached_count > 0 && (
+              <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 flex gap-4 items-center animate-pulse">
+                <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-400">SLA Breach Alert</h3>
+                  <p className="text-xs text-slate-400 mt-0.5"><span className="text-white font-bold">{slaRisk.summary.breached_count}</span> tickets have exceeded their mandated resolution timeframe.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="glass-card p-5 bg-gradient-to-br from-indigo-500/10 to-transparent border-indigo-500/20 hover:border-indigo-500/40 transition-colors">
+            <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1.5">Statewide Open</div>
+            <div className="text-4xl font-black text-white">{stats ? stats.open_tickets : '—'}</div>
+          </div>
+          <div className="glass-card p-5 bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20 hover:border-emerald-500/40 transition-colors">
+            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">Statewide Resolved</div>
+            <div className="text-4xl font-black text-white">{stats ? stats.closed_tickets : '—'}</div>
+          </div>
+          <div className="glass-card p-5 bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20 hover:border-amber-500/40 transition-colors">
+            <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1.5">Resolution Rate</div>
+            <div className="text-4xl font-black text-white">{stats ? `${stats.resolution_rate}%` : '—'}</div>
+          </div>
+          <div className="glass-card p-5 bg-gradient-to-br from-cyan-500/10 to-transparent border-cyan-500/20 hover:border-cyan-500/40 transition-colors">
+            <div className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-1.5">Active Institutions</div>
+            <div className="text-4xl font-black text-white">{stats ? stats.institution_count : '—'}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Map Placeholder or Key Info */}
+          <div className="glass-card p-6 min-h-[400px] flex flex-col relative overflow-hidden group hover:border-slate-700 transition-colors">
+            <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Jharkhand_locator_map.svg/800px-Jharkhand_locator_map.svg.png')] bg-contain bg-center bg-no-repeat opacity-[0.03] group-hover:opacity-[0.08] transition-opacity" />
+            <div className="relative z-10 flex-1 flex flex-col">
+              <h2 className="text-lg font-bold text-white mb-2">Live AI Routing Status</h2>
+              <p className="text-sm text-slate-400 mb-6">UniSOLV routing engine is currently active and processing new reports across Jharkhand in real-time.</p>
+              
+              <div className="space-y-4 mt-auto">
+                <div className="p-4 rounded-xl bg-slate-900/50 border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-semibold text-slate-300">Natural Language Engine</span>
+                  </div>
+                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded">ONLINE</span>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900/50 border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-semibold text-slate-300">Geospatial Hotspot Mapper</span>
+                  </div>
+                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded">ONLINE</span>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900/50 border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-semibold text-slate-300">Automated Dispatcher</span>
+                  </div>
+                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded">ONLINE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Feed */}
+          <div className="glass-card p-6 flex flex-col hover:border-slate-700 transition-colors">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-white">Live Submission Feed</h2>
+              <Link href="/dashboard/government" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300">View All →</Link>
+            </div>
+            
+            <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+              {tickets.length === 0 ? (
+                <p className="text-slate-500 text-sm text-center py-10">Waiting for live data...</p>
+              ) : (
+                tickets.map(t => (
+                  <div key={t.id} className="p-4 rounded-xl bg-slate-900/40 border border-white/5 hover:bg-slate-900/60 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold bg-white/10 text-slate-300 px-2 py-0.5 rounded tracking-widest uppercase">#{t.id}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.domain || 'Unclassified'}</span>
+                    </div>
+                    <h4 className="font-semibold text-white text-sm mb-1 truncate">{t.title}</h4>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'resolved' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        <span className="text-slate-300 font-medium capitalize">{t.status.replace(/_/g, ' ')}</span>
+                      </span>
+                      {t.severity_score && <span className="text-xs text-slate-500">Sev: <span className="text-red-400 font-bold">{Math.round(t.severity_score * 100)}%</span></span>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function OverviewPage() {
+  const [role, setRole] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.isAuthenticated) setRole(data.role)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return null
+
+  if (role === 'government') {
+    return <GovtOverview />
+  }
+
+  return <LandingPage />
 }

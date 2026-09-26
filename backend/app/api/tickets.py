@@ -36,6 +36,7 @@ import imageio_ffmpeg  # noqa: E402
 os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
 
 _whisper_model = None
+_sentence_model = None
 
 
 def get_whisper_model():
@@ -44,6 +45,14 @@ def get_whisper_model():
         import whisper
         _whisper_model = whisper.load_model("tiny")
     return _whisper_model
+
+
+def get_sentence_model():
+    global _sentence_model
+    if _sentence_model is None:
+        from sentence_transformers import SentenceTransformer
+        _sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _sentence_model
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +69,7 @@ async def create_ticket(
     lng: Optional[float] = Form(None),
     audio: Optional[UploadFile] = File(None),
     media: Optional[UploadFile] = File(None),
+    contact_phone: Optional[str] = Form(None),
     transcription_hindi: Optional[str] = Form(None),
     transcription_english: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
@@ -86,13 +96,14 @@ async def create_ticket(
             await out_file.write(content)
         media_urls.append(audio_path)
 
-        try:
-            model = get_whisper_model()
-            result = model.transcribe(audio_path)
-            transcribed_text = result.get("text", "")
-            logger.info("Transcribed audio via Whisper: %s", transcribed_text)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Whisper transcription failed, relying on client transcript: %s", exc)
+        if not transcription_english and not transcription_hindi:
+            try:
+                model = get_whisper_model()
+                result = model.transcribe(audio_path)
+                transcribed_text = result.get("text", "")
+                logger.info("Transcribed audio via Whisper: %s", transcribed_text)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Whisper transcription failed, relying on client transcript: %s", exc)
 
     if media and media.filename:
         media_path = f"uploads/{datetime.now().timestamp()}_{media.filename}"
@@ -135,6 +146,7 @@ async def create_ticket(
         domain=classification_result.domain,
         severity_score=classification_result.severity_score,
         classification_confidence=classification_result.confidence,
+        contact_phone=contact_phone.strip() if contact_phone else None,
     )
     db.add(ticket)
     await db.flush()  # populate ticket.id before clustering
@@ -142,10 +154,8 @@ async def create_ticket(
     # ── Clustering: assign ticket to an existing cluster or create a new one ──
     # Produce the embedding in a thread pool (CPU-bound, same model as classifier).
     try:
-        from sentence_transformers import SentenceTransformer  # lazy import
-
         def _embed(text: str) -> "list[float]":
-            model = SentenceTransformer("all-MiniLM-L6-v2")
+            model = get_sentence_model()
             return model.encode(text, convert_to_numpy=True)
 
         embedding = await asyncio.get_event_loop().run_in_executor(
@@ -166,6 +176,7 @@ async def create_ticket(
         "ticket_id": ticket.id,
         "cluster_id": ticket.cluster_id,
         "domain": ticket.domain,
+        "contact_phone": ticket.contact_phone,
         "needs_human_review": classification_result.needs_human_review,
         "transcription": transcription_english or transcribed_text or transcription_hindi or "",
         "transcription_english": transcription_english or transcribed_text or "",
@@ -202,35 +213,122 @@ async def get_tickets(
     result = await db.execute(query.order_by(Ticket.created_at.desc()))
     tickets = result.scalars().all()
 
+    now = datetime.now(timezone.utc)
+
+    def sla_status(t: Ticket) -> str:
+        if not t.sla_deadline:
+            return "no_sla"
+        delta = t.sla_deadline - now
+        hours_left = delta.total_seconds() / 3600
+        if hours_left < 0:
+            return "breached"
+        if hours_left < 6:
+            return "critical"
+        if hours_left < 24:
+            return "at_risk"
+        return "safe"
+
+    def sla_hours_remaining(t: Ticket) -> float | None:
+        if not t.sla_deadline:
+            return None
+        return round((t.sla_deadline - now).total_seconds() / 3600, 1)
+
     def _worker_credits(t: Ticket) -> list:
         """Return worker_credits from the first attribution record, or empty list."""
         if t.attributions:
             return t.attributions[0].worker_credits or []
         return []
 
-    return [
-        {
+    rows = []
+    for t in tickets:
+        inst = t.assigned_institution
+        rows.append({
             "id": t.id,
             "title": t.title,
             "description": t.description,
             "domain": t.domain,
-            "status": t.status,
+            "status": t.status.value if hasattr(t.status, 'value') else str(t.status),
             "severity_score": t.severity_score,
-            "assigned_institution_id": t.assigned_institution_id,
-            "assigned_institution_name": t.assigned_institution.name if t.assigned_institution else None,
+            "classification_confidence": t.classification_confidence,
+            "contact_phone": t.contact_phone,
             "media_urls": t.media_urls or [],
-            "proof_media_urls": t.proof_media_urls,
-            "completion_notes": t.completion_notes,
-            "sla_deadline": t.sla_deadline,
-            "created_at": t.created_at,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+            "sla_deadline": t.sla_deadline.isoformat() if t.sla_deadline else None,
+            "sla_status": sla_status(t),
+            "sla_hours_remaining": sla_hours_remaining(t),
+            "routing_shortlist": t.routing_shortlist or [],
+            "assigned_institution": {
+                "id": inst.id,
+                "name": inst.name,
+                "type": inst.type.value if hasattr(inst.type, 'value') else str(inst.type),
+                "reputation_score": round(inst.reputation_score, 3),
+                "current_load": inst.current_load,
+                "domains_of_expertise": inst.domains_of_expertise or [],
+            } if inst else None,
+            "assigned_institution_id": t.assigned_institution_id,
+            "assigned_institution_name": inst.name if inst else None,
             "worker_credits": _worker_credits(t),
+            "proof_media_urls": getattr(t, "proof_media_urls", []),
+            "completion_notes": getattr(t, "completion_notes", None),
             "events": [
-                {"type": e.event_type, "notes": e.notes, "time": e.created_at}
+                {
+                    "type": e.event_type.value if hasattr(e.event_type, 'value') else str(e.event_type),
+                    "notes": e.notes,
+                    "time": e.created_at.isoformat() if e.created_at else None
+                }
                 for e in t.events
             ],
-        }
-        for t in tickets
-    ]
+        })
+    return rows
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/assign  — government_officer only
+# ---------------------------------------------------------------------------
+
+class ManualAssign(BaseModel):
+    institution_id: int
+
+@router.post("/{ticket_id}/assign")
+async def manual_assign_ticket(
+    ticket_id: int,
+    payload: ManualAssign,
+    current_user: User = Depends(require_role([UserRole.government_officer])),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually assign or re-assign a ticket to a specific institution."""
+    ticket = await db.get(Ticket, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    inst = await db.get(Institution, payload.institution_id)
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    old_inst_id = ticket.assigned_institution_id
+    ticket.assigned_institution_id = inst.id
+    ticket.status = TicketStatus.routed
+
+    # Decrement old load if re-assigning
+    if old_inst_id:
+        old_inst = await db.get(Institution, old_inst_id)
+        if old_inst and (old_inst.current_load or 0) > 0:
+            old_inst.current_load -= 1
+
+    # Increment new load
+    inst.current_load = (inst.current_load or 0) + 1
+
+    from datetime import timedelta
+    ticket.sla_deadline = datetime.now(timezone.utc) + timedelta(hours=48)
+
+    event = TicketEvent(
+        ticket_id=ticket.id,
+        event_type=EventType.routed,
+        notes=f"Manually assigned to {inst.name}."
+    )
+    db.add(event)
+    await db.commit()
+    return {"status": "assigned", "assigned_to": inst.id}
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +667,7 @@ async def accept_ticket_endpoint(
     # CRIT-3: FOR UPDATE lock
     result = await db.execute(select(Ticket).where(Ticket.id == ticket_id).with_for_update())
     ticket = result.scalar_one_or_none()
-    
+
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 

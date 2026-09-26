@@ -18,6 +18,12 @@ interface LeaderboardItem {
   id: number; name: string; type: string;
   reputation_score: number; reputation_by_domain: Record<string, number>; current_load: number
 }
+interface SummaryData {
+  total_tickets: number; open_tickets: number; closed_tickets: number
+  escalated_tickets: number; resolution_rate: number; avg_severity: number
+  institution_count: number; avg_institution_load: number
+  top_domain: string; top_domain_count: number; tickets_with_contact: number
+}
 
 interface Props {
   domains: DomainItem[]
@@ -25,10 +31,35 @@ interface Props {
   leaderboard: LeaderboardItem[]
   hotspots: HotspotItem[]
   trends: TrendItem[]
+  summary?: SummaryData | null
+  ticketLocations?: any[]
 }
 
-export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotspots, trends }: Props) {
+// ── KPI Mini Card ─────────────────────────────────────────────────────────────
+function MiniKpi({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent: string }) {
   return (
+    <div className={`glass-card p-4 border-t-2 ${accent}`}>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotspots, trends, summary, ticketLocations = [] }: Props) {
+  return (
+    <div className="space-y-6">
+      {/* ── KPI Cards ── */}
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <MiniKpi label="Total" value={summary.total_tickets} sub="All tickets" accent="border-indigo-500" />
+          <MiniKpi label="Open" value={summary.open_tickets} sub="Awaiting action" accent="border-amber-500" />
+          <MiniKpi label="Resolved" value={summary.closed_tickets} sub={`${summary.resolution_rate}% rate`} accent="border-emerald-500" />
+          <MiniKpi label="Escalated" value={summary.escalated_tickets} sub="Urgent" accent="border-red-500" />
+          <MiniKpi label="Avg Severity" value={`${Math.round(summary.avg_severity * 100)}%`} sub={`Top: ${summary.top_domain}`} accent="border-violet-500" />
+        </div>
+      )}
+
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       {/* Domains Chart */}
@@ -81,9 +112,9 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
 
       {/* Map */}
       <div className="glass-card p-6 lg:col-span-2">
-        <h2 className="text-base font-semibold mb-4 text-slate-200">Active Hotspots</h2>
+        <h2 className="text-base font-semibold mb-4 text-slate-200">Active Hotspots & Tickets (Jharkhand)</h2>
         <div className="h-96 rounded-xl overflow-hidden">
-          <HotspotMap hotspots={hotspots} />
+          <HotspotMap hotspots={hotspots} ticketLocations={ticketLocations} />
         </div>
       </div>
 
@@ -151,6 +182,7 @@ export default function AnalyticsDashboard({ domains, funnel, leaderboard, hotsp
         )}
       </div>
 
+    </div>
     </div>
   );
 }

@@ -19,6 +19,7 @@ export interface TicketData {
   domain: string | null
   status: string
   severity_score: number | null
+  contact_phone?: string | null
   media_urls?: string[]
   proof_media_urls?: string[]
   completion_notes: string | null
@@ -217,7 +218,7 @@ function renderDescription(desc: string) {
   )
 }
 
-export function TicketCard({ ticket, viewMode, actionsSlot }: TicketCardProps) {
+export function TicketCard({ ticket, _viewMode, actionsSlot }: { ticket: TicketData; _viewMode?: 'citizen' | 'government' | 'institution'; viewMode?: 'citizen' | 'government' | 'institution'; actionsSlot?: React.ReactNode }) {
   const statusCfg = STATUS_MAP[ticket.status] ?? STATUS_MAP.pending_validation
   const priority = getPriorityDetails(ticket.severity_score)
   const isCompleted = ['verified', 'closed'].includes(ticket.status)
@@ -312,6 +313,17 @@ export function TicketCard({ ticket, viewMode, actionsSlot }: TicketCardProps) {
               <span>⏱️</span>
               <span>{slaRemainingText}</span>
             </span>
+          )}
+
+          {/* Contact Phone */}
+          {ticket.contact_phone && (
+            <a
+              href={`tel:${ticket.contact_phone}`}
+              className="text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors"
+            >
+              <span>📞</span>
+              <span>{ticket.contact_phone}</span>
+            </a>
           )}
         </div>
 
