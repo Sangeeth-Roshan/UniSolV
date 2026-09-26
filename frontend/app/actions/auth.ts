@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
 export async function loginAction(formData: FormData) {
-  const email = formData.get('email') as string
+  const email = (formData.get('email') as string).trim().toLowerCase()
   const password = formData.get('password') as string
 
   const res = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/auth/login`, {

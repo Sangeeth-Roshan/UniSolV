@@ -2,7 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, get_password_hash
@@ -31,13 +31,14 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new citizen account."""
-    existing = await db.execute(select(User).where(User.email == body.email))
+    normalized_email = body.email.strip().lower()
+    existing = await db.execute(select(User).where(User.email == normalized_email))
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user = User(
         name=body.name,
-        email=body.email,
+        email=normalized_email,
         password_hash=get_password_hash(body.password),
         role=UserRole.citizen,
         phone=body.phone,
@@ -52,7 +53,8 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(User).where(User.email == form_data.username)
+    normalized_email = form_data.username.strip().lower()
+    query = select(User).where(func.lower(User.email) == normalized_email)
     result = await db.execute(query)
     user = result.scalars().first()
     
