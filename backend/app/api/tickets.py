@@ -207,6 +207,9 @@ async def get_tickets(
     if current_user.role == UserRole.citizen:
         query = query.where(Ticket.reporter_id == current_user.id)
     elif current_user.role in (UserRole.university_admin, UserRole.student, UserRole.company):
+        # Institution users with no institution_id (not yet approved) see nothing
+        if not current_user.institution_id:
+            return []
         query = query.where(Ticket.assigned_institution_id == current_user.institution_id)
     # government_officer sees all — no additional filter
 
@@ -364,6 +367,9 @@ async def get_ticket(
     if current_user.role == UserRole.citizen and ticket.reporter_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
     elif current_user.role in (UserRole.university_admin, UserRole.student, UserRole.company):
+        # Unapproved users (no institution yet) cannot access any ticket
+        if not current_user.institution_id:
+            raise HTTPException(status_code=403, detail="Your institution account is pending approval")
         if ticket.assigned_institution_id != current_user.institution_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -774,6 +780,11 @@ async def close_ticket_endpoint(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    # Institution users can only close tickets assigned to their own institution
+    if current_user.role == UserRole.university_admin:
+        if not current_user.institution_id or ticket.assigned_institution_id != current_user.institution_id:
+            raise HTTPException(status_code=403, detail="Not authorized to close this ticket")
+
     if ticket.status == TicketStatus.closed:
         raise HTTPException(status_code=400, detail="Ticket is already closed")
 
@@ -824,6 +835,10 @@ async def update_attribution(
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # Only the institution that resolved the ticket may finalise its IP attribution
+    if not current_user.institution_id or ticket.assigned_institution_id != current_user.institution_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update attribution for this ticket")
 
     if ticket.status != TicketStatus.closed:
         raise HTTPException(

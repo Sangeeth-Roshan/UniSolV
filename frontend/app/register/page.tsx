@@ -148,13 +148,15 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
+      const normalizedEmail = instRepEmail.trim().toLowerCase()
+
       // Step 1: Register applicant user account
       const registerRes = await fetch('/api/proxy/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: instRepName.trim(),
-          email: instRepEmail.trim(),
+          email: normalizedEmail,
           password: instPassword,
           phone: instContactPhone.trim() || null
         })
@@ -162,14 +164,17 @@ export default function RegisterPage() {
 
       if (!registerRes.ok) {
         const data = await registerRes.json().catch(() => ({}))
-        setError(data.detail || 'Institution account registration failed. Email might already exist.')
-        setLoading(false)
-        return
+        // If email already registered, still proceed to login (user may be re-applying)
+        if (!data.detail?.includes('already registered')) {
+          setError(data.detail || 'Account creation failed. Please try again.')
+          setLoading(false)
+          return
+        }
       }
 
       // Step 2: Auto-login to obtain session bearer token
       const loginForm = new FormData()
-      loginForm.append('username', instRepEmail.trim())
+      loginForm.append('username', normalizedEmail)
       loginForm.append('password', instPassword)
 
       const loginRes = await fetch('/api/proxy/auth/login', {
@@ -178,7 +183,7 @@ export default function RegisterPage() {
       })
 
       if (!loginRes.ok) {
-        setError('Account created, but authentication failed. Please sign in manually.')
+        setError('Account created, but sign-in failed. Check your password and try again.')
         setLoading(false)
         return
       }
@@ -202,21 +207,26 @@ export default function RegisterPage() {
           institution_name: instName.trim(),
           institution_type: instType,
           domains_of_expertise: instDomains,
-          contact_email: instContactEmail.trim(),
+          contact_email: instContactEmail.trim().toLowerCase(),
           contact_phone: instContactPhone.trim() || null,
           description: appDescription
         })
       })
 
       if (applyRes.ok) {
-        setSuccessMessage('Institution application registered! A Government of Jharkhand officer will verify your details.')
+        setSuccessMessage('Application submitted! A Government of Jharkhand officer will review and approve your institution.')
         setTimeout(() => router.push('/login'), 3000)
       } else {
         const data = await applyRes.json().catch(() => ({}))
-        setError(data.detail || 'Failed to submit institution application.')
+        if (data.detail?.includes('pending application')) {
+          setSuccessMessage('Your application is already pending review. You will be notified once approved.')
+          setTimeout(() => router.push('/login'), 4000)
+        } else {
+          setError(data.detail || 'Failed to submit institution application.')
+        }
       }
     } catch {
-      setError('Network error during application. Please try again.')
+      setError('Network error. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
