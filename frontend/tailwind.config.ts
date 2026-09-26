@@ -14,6 +14,7 @@ const config: Config = {
       },
       fontFamily: {
         jakarta: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+        geist: ["var(--font-geist-sans)", "Geist", "system-ui", "sans-serif"],
       },
     },
   },

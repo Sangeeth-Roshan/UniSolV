@@ -20,6 +20,7 @@ from app.models.ticket_event import TicketEvent  # noqa: F401
 from app.models.attribution import Attribution  # noqa: F401
 from app.models.rating import Rating  # noqa: F401
 from app.models.institution_application import InstitutionApplication  # noqa: F401
+from app.models.ticket_vote import TicketVote  # noqa: F401
 
 __all__ = [
     "Base",
@@ -31,4 +32,5 @@ __all__ = [
     "Attribution",
     "Rating",
     "InstitutionApplication",
+    "TicketVote",
 ]

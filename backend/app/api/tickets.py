@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func as sqlfunc, case
 from sqlalchemy.orm import selectinload
 from geoalchemy2.elements import WKTElement
 import aiofiles
@@ -332,6 +332,83 @@ async def manual_assign_ticket(
     db.add(event)
     await db.commit()
     return {"status": "assigned", "assigned_to": inst.id}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/tickets/trending  — PUBLIC (no auth required)
+# Returns top tickets sorted by upvotes desc, then severity desc
+# ---------------------------------------------------------------------------
+
+@router.get("/trending")
+async def get_trending_tickets(
+    db: AsyncSession = Depends(get_db),
+    limit: int = 10,
+):
+    """
+    Public endpoint — returns top civic issues ranked by net upvotes then severity.
+    No authentication required so guest visitors can see the trending feed.
+    """
+    from sqlalchemy import func as sqlfunc, case
+    from app.models.ticket_vote import TicketVote
+
+    # Aggregate votes per ticket
+    vote_subq = (
+        select(
+            TicketVote.ticket_id,
+            sqlfunc.count(case((TicketVote.vote == "up", 1))).label("upvotes"),
+            sqlfunc.count(case((TicketVote.vote == "down", 1))).label("downvotes"),
+        )
+        .group_by(TicketVote.ticket_id)
+        .subquery()
+    )
+
+    query = (
+        select(Ticket, vote_subq.c.upvotes, vote_subq.c.downvotes)
+        .outerjoin(vote_subq, Ticket.id == vote_subq.c.ticket_id)
+        .where(Ticket.status.notin_(["closed"]))  # exclude archived
+        .order_by(
+            (sqlfunc.coalesce(vote_subq.c.upvotes, 0) - sqlfunc.coalesce(vote_subq.c.downvotes, 0)).desc(),
+            sqlfunc.coalesce(Ticket.severity_score, 0).desc(),
+            Ticket.created_at.desc(),
+        )
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "id": ticket.id,
+            "title": ticket.title,
+            "description": ticket.description[:300] if ticket.description else "",
+            "domain": ticket.domain,
+            "status": ticket.status.value if hasattr(ticket.status, "value") else str(ticket.status),
+            "severity_score": ticket.severity_score,
+            "upvotes": upvotes or 0,
+            "downvotes": downvotes or 0,
+            "net_votes": (upvotes or 0) - (downvotes or 0),
+            "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
+        }
+        for ticket, upvotes, downvotes in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# GET /api/tickets/my-votes  — authenticated user's active votes
+# ---------------------------------------------------------------------------
+
+@router.get("/my-votes")
+async def get_my_votes(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return map of ticket_id -> vote ('up' | 'down') for current user."""
+    from app.models.ticket_vote import TicketVote
+
+    res = await db.execute(select(TicketVote).where(TicketVote.user_id == current_user.id))
+    votes = res.scalars().all()
+    return {v.ticket_id: v.vote for v in votes}
 
 
 # ---------------------------------------------------------------------------
@@ -860,3 +937,113 @@ async def update_attribution(
 
     await db.commit()
     return {"status": "attribution_updated"}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tickets/{id}/vote  — any authenticated user
+# ---------------------------------------------------------------------------
+
+class VotePayload(BaseModel):
+    vote: str  # 'up' or 'down'
+
+
+@router.post("/{ticket_id}/vote")
+async def vote_ticket(
+    ticket_id: int,
+    payload: VotePayload,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cast or update an upvote/downvote on a public ticket.
+
+    * One vote per user per ticket enforced via DB UNIQUE constraint.
+    * If the user already voted the same direction → HTTP 200 no-op.
+    * If the user already voted the opposite direction → vote is updated.
+    """
+    from app.models.ticket_vote import TicketVote
+
+    if payload.vote not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="vote must be 'up' or 'down'")
+
+    ticket = await db.get(Ticket, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    existing_q = await db.execute(
+        select(TicketVote).where(
+            TicketVote.ticket_id == ticket_id,
+            TicketVote.user_id == current_user.id,
+        )
+    )
+    existing = existing_q.scalars().first()
+
+    if existing:
+        if existing.vote == payload.vote:
+            # Same vote — no-op, just return current counts
+            pass
+        else:
+            # Flip vote
+            existing.vote = payload.vote
+            await db.commit()
+    else:
+        vote = TicketVote(ticket_id=ticket_id, user_id=current_user.id, vote=payload.vote)
+        db.add(vote)
+        await db.commit()
+
+    # Return refreshed counts
+    counts_q = await db.execute(
+        select(
+            sqlfunc.count(case((TicketVote.vote == "up", 1))).label("upvotes"),
+            sqlfunc.count(case((TicketVote.vote == "down", 1))).label("downvotes"),
+        ).where(TicketVote.ticket_id == ticket_id)
+    )
+    counts = counts_q.one()
+    return {
+        "status": "voted",
+        "ticket_id": ticket_id,
+        "your_vote": payload.vote,
+        "upvotes": counts.upvotes,
+        "downvotes": counts.downvotes,
+    }
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/tickets/{id}/vote  — remove your own vote
+# ---------------------------------------------------------------------------
+
+@router.delete("/{ticket_id}/vote")
+async def remove_vote(
+    ticket_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove an existing vote from a ticket."""
+    from app.models.ticket_vote import TicketVote
+
+    existing_q = await db.execute(
+        select(TicketVote).where(
+            TicketVote.ticket_id == ticket_id,
+            TicketVote.user_id == current_user.id,
+        )
+    )
+    existing = existing_q.scalars().first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="No vote found to remove")
+
+    await db.delete(existing)
+    await db.commit()
+
+    counts_q = await db.execute(
+        select(
+            sqlfunc.count(case((TicketVote.vote == "up", 1))).label("upvotes"),
+            sqlfunc.count(case((TicketVote.vote == "down", 1))).label("downvotes"),
+        ).where(TicketVote.ticket_id == ticket_id)
+    )
+    counts = counts_q.one()
+    return {
+        "status": "vote_removed",
+        "ticket_id": ticket_id,
+        "upvotes": counts.upvotes,
+        "downvotes": counts.downvotes,
+    }
+

@@ -99,6 +99,7 @@ class Ticket(Base):
         "Attribution", back_populates="ticket"
     )
     ratings: Mapped[list["Rating"]] = relationship("Rating", back_populates="ticket")
+    votes: Mapped[list["TicketVote"]] = relationship("TicketVote", back_populates="ticket")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Ticket id={self.id} status={self.status} domain={self.domain!r}>"

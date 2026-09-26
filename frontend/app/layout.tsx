@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { SidebarNav } from "@/components/SidebarNav";
 import { HeaderControls } from "@/components/HeaderControls";
@@ -16,7 +17,7 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: {
     template: "%s | UniSOLV",
-    default: "UniSOLV — Civic Issue Reporting & Redressal Platform",
+    default: "UniSOLV â€” Civic Issue Reporting & Redressal Platform",
   },
   description:
     "Report, track, and resolve civic issues in your community with UniSOLV.",
@@ -58,12 +59,12 @@ export default function RootLayout({
       if (payload.sub) userInitial = (payload.sub as string)[0].toUpperCase();
     }
   } catch {
-    // No token or malformed — guest state
+    // No token or malformed â€” guest state
   }
 
   return (
     <html lang="en">
-      <body className={`${jakarta.variable} font-jakarta antialiased bg-slate-50 relative overflow-x-hidden`}>
+      <body className={`${jakarta.variable} ${GeistSans.variable} font-jakarta antialiased bg-slate-50 relative overflow-x-hidden`}>
   {/* Abstract Liquid Glass Blobs for Background */}
   <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-orange-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-[spin_20s_linear_infinite]" />
   <div className="fixed bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-green-400/20 blur-[130px] mix-blend-multiply pointer-events-none animate-[spin_25s_linear_infinite_reverse]" />

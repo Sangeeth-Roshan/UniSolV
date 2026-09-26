@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { GeistSans } from 'geist/font/sans'
+import { TrendingIssues } from '@/components/TrendingIssues'
 
 const stats = [
   { value: '10K+', label: 'Issues Resolved', sub: 'across all domains', color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -103,12 +105,128 @@ interface InstitutionLeaderboardItem {
   current_load?: number
 }
 
+const TrophyGoldSVG = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M7 4V2H17V4H20C20.5523 4 21 4.44772 21 5V8C21 10.7614 18.7614 13 16 13H15.9C15.4418 14.7317 14.0048 16.0847 12.2 16.425V19H15V21H9V19H11.8V16.425C9.99516 16.0847 8.55823 14.7317 8.1 13H8C5.23858 13 3 10.7614 3 8V5C3 4.44772 3.44772 4 4 4H7ZM5 6V8C5 9.65685 6.34315 11 8 11V6H5ZM16 11C17.6569 11 19 9.65685 19 8V6H16V11ZM9 4H15V13C15 14.6569 13.6569 16 12 16C10.3431 16 9 14.6569 9 13V4Z"
+      fill="currentColor"
+    />
+  </svg>
+)
+
+const MedalSilverSVG = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L15 8H9L12 2Z" fill="#64748B" />
+    <path d="M7 2L10.5 8H8L4.5 2H7Z" fill="#94A3B8" />
+    <path d="M17 2L13.5 8H16L19.5 2H17Z" fill="#94A3B8" />
+    <circle cx="12" cy="15" r="7" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+    <circle cx="12" cy="15" r="5" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
+    <path d="M12 11.5L13.1 13.8L15.6 14.2L13.8 15.9L14.2 18.4L12 17.2L9.8 18.4L10.2 15.9L8.4 14.2L10.9 13.8L12 11.5Z" fill="#475569" />
+  </svg>
+)
+
+const MedalBronzeSVG = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L15 8H9L12 2Z" fill="#9A3412" />
+    <path d="M7 2L10.5 8H8L4.5 2H7Z" fill="#C2410C" />
+    <path d="M17 2L13.5 8H16L19.5 2H17Z" fill="#C2410C" />
+    <circle cx="12" cy="15" r="7" fill="#FDBA74" stroke="#9A3412" strokeWidth="1.5" />
+    <circle cx="12" cy="15" r="5" fill="#FB923C" stroke="#C2410C" strokeWidth="1" />
+    <path d="M12 11.5L13.1 13.8L15.6 14.2L13.8 15.9L14.2 18.4L12 17.2L9.8 18.4L10.2 15.9L8.4 14.2L10.9 13.8L12 11.5Z" fill="#7C2D12" />
+  </svg>
+)
+
+const UniversityIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7" />
+  </svg>
+)
+
+const CorporateIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+)
+
+function InstitutionAvatar({ inst, rank }: { inst: InstitutionLeaderboardItem; rank: number }) {
+  const isUni = inst.type.toLowerCase() === 'university'
+  const isFirst = rank === 1
+  const isSecond = rank === 2
+  const isThird = rank === 3
+
+  return (
+    <div className="relative shrink-0">
+      <div
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+          isFirst
+            ? 'bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 border-2 border-amber-400 shadow-md shadow-amber-500/20'
+            : isSecond
+            ? 'bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 border-2 border-slate-300 shadow-md shadow-slate-400/20'
+            : isThird
+            ? 'bg-gradient-to-br from-orange-100 via-amber-50 to-orange-200 border-2 border-orange-400 shadow-md shadow-orange-500/20'
+            : 'bg-white border border-slate-200 shadow-sm'
+        }`}
+      >
+        {isFirst ? (
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-inner">
+            <TrophyGoldSVG className="w-5 h-5 text-yellow-100" />
+          </div>
+        ) : isSecond ? (
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-300 to-slate-500 flex items-center justify-center text-white shadow-inner">
+            <MedalSilverSVG className="w-5 h-5" />
+          </div>
+        ) : isThird ? (
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 flex items-center justify-center text-white shadow-inner">
+            <MedalBronzeSVG className="w-5 h-5" />
+          </div>
+        ) : isUni ? (
+          <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <UniversityIcon className="w-5 h-5" />
+          </div>
+        ) : (
+          <div className="w-8 h-8 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-[#138808]">
+            <CorporateIcon className="w-5 h-5" />
+          </div>
+        )}
+      </div>
+
+      {/* Floating mini rank badge on top-right of avatar */}
+      {isFirst && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border border-white flex items-center justify-center text-[9px] font-black text-white shadow">
+          1
+        </span>
+      )}
+      {isSecond && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-500 border border-white flex items-center justify-center text-[9px] font-black text-white shadow">
+          2
+        </span>
+      )}
+      {isThird && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-700 border border-white flex items-center justify-center text-[9px] font-black text-white shadow">
+          3
+        </span>
+      )}
+    </div>
+  )
+}
+
 function LandingPage() {
   const [leaderboard, setLeaderboard] = useState<InstitutionLeaderboardItem[]>([])
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [filterType, setFilterType] = useState<'all' | 'university' | 'company'>('all')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
 
   useEffect(() => {
+    // Check login status
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.isAuthenticated) setIsLoggedIn(true) })
+      .catch(() => {})
+
+    // Load leaderboard
     fetch('/api/proxy/institutions/leaderboard')
       .then((res) => (res.ok ? res.json() : []))
       .then((data: InstitutionLeaderboardItem[]) => {
@@ -168,7 +286,7 @@ function LandingPage() {
   })
 
   return (
-    <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-transparent text-slate-900 font-sans">
+    <div className={`relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-transparent text-slate-900 ${GeistSans.className} font-geist`}>
       
       {/* Header bar */}
       <div className="bg-white/40 backdrop-blur-xl border-b border-white/60 py-2 px-8 flex justify-between items-center text-sm font-semibold text-slate-600">
@@ -315,23 +433,25 @@ function LandingPage() {
             </button>
             <button
               onClick={() => setFilterType('university')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 filterType === 'university'
                   ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
                   : 'bg-white/80 text-slate-700 border border-slate-200 hover:bg-slate-100'
               }`}
             >
-              🎓 Universities ({leaderboard.filter(i => i.type.toLowerCase() === 'university').length})
+              <UniversityIcon className={`w-4 h-4 ${filterType === 'university' ? 'text-white' : 'text-indigo-600'}`} />
+              <span>Universities ({leaderboard.filter(i => i.type.toLowerCase() === 'university').length})</span>
             </button>
             <button
               onClick={() => setFilterType('company')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 filterType === 'company'
                   ? 'bg-[#138808] text-white shadow-md shadow-green-700/30'
                   : 'bg-white/80 text-slate-700 border border-slate-200 hover:bg-slate-100'
               }`}
             >
-              🏢 Corporate Partners ({leaderboard.filter(i => i.type.toLowerCase() === 'company').length})
+              <CorporateIcon className={`w-4 h-4 ${filterType === 'company' ? 'text-white' : 'text-[#138808]'}`} />
+              <span>Corporate Partners ({leaderboard.filter(i => i.type.toLowerCase() === 'company').length})</span>
             </button>
           </div>
 
@@ -353,7 +473,7 @@ function LandingPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200/80 bg-slate-50/60 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      <th className="py-4 px-6 text-center w-20">Rank</th>
+                      <th className="py-4 px-6 text-center w-24">Rank</th>
                       <th className="py-4 px-6">Institution / Partner</th>
                       <th className="py-4 px-6 hidden md:table-cell">Key Expertise Domains</th>
                       <th className="py-4 px-6 text-center">Solutions Delivered</th>
@@ -371,46 +491,97 @@ function LandingPage() {
                       return (
                         <tr
                           key={inst.id}
-                          className="hover:bg-orange-50/30 transition-colors group"
+                          className={`transition-colors group ${
+                            isFirst
+                              ? 'bg-amber-50/20 hover:bg-amber-50/40'
+                              : isSecond
+                              ? 'bg-slate-50/30 hover:bg-slate-50/60'
+                              : isThird
+                              ? 'bg-orange-50/20 hover:bg-orange-50/40'
+                              : 'hover:bg-slate-50/60'
+                          }`}
                         >
-                          {/* Rank Badge */}
+                          {/* Rank Badge Column */}
                           <td className="py-4 px-6 text-center">
                             {isFirst ? (
-                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-extrabold text-xs shadow-md shadow-amber-500/30">
-                                🥇 1
-                              </span>
+                              <div className="inline-flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 p-0.5 shadow-md shadow-amber-500/30 flex items-center justify-center">
+                                  <div className="w-full h-full rounded-full bg-gradient-to-b from-amber-500 to-orange-600 flex items-center justify-center text-white">
+                                    <TrophyGoldSVG className="w-5 h-5 text-yellow-100" />
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-extrabold text-amber-700 tracking-wide mt-1">1st Rank</span>
+                              </div>
                             ) : isSecond ? (
-                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 text-white font-extrabold text-xs shadow-md">
-                                🥈 2
-                              </span>
+                              <div className="inline-flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-200 via-slate-300 to-slate-400 p-0.5 shadow-md shadow-slate-400/20 flex items-center justify-center">
+                                  <div className="w-full h-full rounded-full bg-gradient-to-b from-slate-400 to-slate-600 flex items-center justify-center text-white">
+                                    <MedalSilverSVG className="w-5 h-5 text-slate-100" />
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-extrabold text-slate-600 tracking-wide mt-1">2nd Rank</span>
+                              </div>
                             ) : isThird ? (
-                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 text-white font-extrabold text-xs shadow-md">
-                                🥉 3
-                              </span>
+                              <div className="inline-flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 via-orange-400 to-amber-700 p-0.5 shadow-md shadow-orange-600/20 flex items-center justify-center">
+                                  <div className="w-full h-full rounded-full bg-gradient-to-b from-amber-700 to-orange-800 flex items-center justify-center text-white">
+                                    <MedalBronzeSVG className="w-5 h-5 text-amber-100" />
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-extrabold text-amber-800 tracking-wide mt-1">3rd Rank</span>
+                              </div>
                             ) : (
-                              <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-extrabold text-xs border border-slate-200 shadow-sm">
                                 #{rank}
                               </span>
                             )}
                           </td>
 
-                          {/* Institution Details */}
+                          {/* Institution Details Column */}
                           <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-lg shadow-sm shrink-0">
-                                {inst.type.toLowerCase() === 'university' ? '🎓' : '🏢'}
-                              </div>
+                            <div className="flex items-center gap-3.5">
+                              <InstitutionAvatar inst={inst} rank={rank} />
                               <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                   <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                                     {inst.name}
                                   </h4>
-                                  <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                                    ✓ Verified
+
+                                  {/* 1st, 2nd, 3rd Image / Badge next to Institution */}
+                                  {isFirst && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-900 border border-amber-300 shadow-sm">
+                                      <TrophyGoldSVG className="w-3.5 h-3.5 text-amber-700" />
+                                      <span>1st Rank • State Champion</span>
+                                    </span>
+                                  )}
+                                  {isSecond && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-slate-100 via-slate-200 to-slate-300 text-slate-800 border border-slate-300 shadow-sm">
+                                      <MedalSilverSVG className="w-3.5 h-3.5" />
+                                      <span>2nd Rank • Runner-Up</span>
+                                    </span>
+                                  )}
+                                  {isThird && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-amber-100 via-orange-100 to-amber-200 text-amber-900 border border-amber-400 shadow-sm">
+                                      <MedalBronzeSVG className="w-3.5 h-3.5" />
+                                      <span>3rd Rank • High Impact</span>
+                                    </span>
+                                  )}
+
+                                  <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                                    <svg className="w-3 h-3 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Verified
                                   </span>
                                 </div>
-                                <p className="text-xs text-slate-500 capitalize">
-                                  {inst.type.toLowerCase() === 'university' ? 'Accredited Academic Institution' : 'Corporate CSR Partner'}
+                                <p className="text-xs text-slate-500 capitalize flex items-center gap-1.5">
+                                  <span>{inst.type.toLowerCase() === 'university' ? 'Accredited Academic Institution' : 'Corporate CSR Partner'}</span>
+                                  {inst.current_load !== undefined && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-slate-400">{inst.current_load} Active Engagements</span>
+                                    </>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -438,7 +609,9 @@ function LandingPage() {
                           {/* Resolved Count */}
                           <td className="py-4 px-6 text-center">
                             <span className="inline-flex items-center gap-1 text-xs font-bold text-green-800 bg-green-50 border border-green-300 px-3 py-1 rounded-xl shadow-sm">
-                              <span>✓</span>
+                              <svg className="w-3.5 h-3.5 text-green-700" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
                               <span>{inst.resolved_count || inst.total_tickets || 12} Resolved</span>
                             </span>
                           </td>
@@ -460,7 +633,7 @@ function LandingPage() {
 
                           {/* Status */}
                           <td className="py-4 px-6 text-right">
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
                               <span className="w-2 h-2 rounded-full bg-[#138808] animate-pulse" />
                               <span>Active Partner</span>
                             </span>
@@ -480,15 +653,20 @@ function LandingPage() {
               </span>
               <Link
                 href="/register?type=institution"
-                className="shrink-0 font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1"
+                className="shrink-0 font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1.5"
               >
                 <span>Partner with Jharkhand Samadhan</span>
-                <span>→</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               </Link>
             </div>
           </div>
         </div>
       </section>
+
+      {/* TRENDING CIVIC ISSUES SECTION */}
+      <TrendingIssues isLoggedIn={isLoggedIn} />
 
       {/* CTA BANNER */}
       <section className="relative z-10 px-8 py-16 bg-white/40 backdrop-blur-xl">
@@ -557,7 +735,7 @@ function GovtOverview() {
   }, [])
 
   return (
-    <div className="relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-transparent text-slate-900 font-sans">
+    <div className={`relative -mx-8 -my-8 overflow-x-hidden min-h-screen bg-transparent text-slate-900 ${GeistSans.className} font-geist`}>
       
       {/* Header bar */}
       <div className="bg-white/40 backdrop-blur-xl border-b border-white/60 py-3 px-8 flex justify-between items-center shadow-sm">
@@ -610,19 +788,19 @@ function GovtOverview() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-orange-400">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Statewide Open</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.open_tickets : '—'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.open_tickets : '-'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-[#138808]">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Statewide Resolved</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.closed_tickets : '—'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.closed_tickets : '-'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-orange-400">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Resolution Rate</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? `${stats.resolution_rate}%` : '—'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? `${stats.resolution_rate}%` : '-'}</div>
           </div>
           <div className="bg-white/60 backdrop-blur-xl p-5 rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] border-t-4 border-t-[#138808]">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Active Institutions</div>
-            <div className="text-3xl font-black text-slate-800">{stats ? stats.institution_count : '—'}</div>
+            <div className="text-3xl font-black text-slate-800">{stats ? stats.institution_count : '-'}</div>
           </div>
         </div>
 
@@ -666,7 +844,12 @@ function GovtOverview() {
           <div className="bg-white/60 backdrop-blur-xl rounded-xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.05)] p-6 flex flex-col">
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
               <h2 className="text-lg font-bold text-slate-800">Live Submission Feed</h2>
-              <Link href="/dashboard/government" className="text-xs font-semibold text-[#FF9933] hover:underline">View All →</Link>
+              <Link href="/dashboard/government" className="text-xs font-semibold text-[#FF9933] hover:underline flex items-center gap-1">
+                <span>View All</span>
+                <svg className="w-3.5 h-3.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Link>
             </div>
             
             <div className="space-y-3 flex-1 overflow-y-auto pr-2">

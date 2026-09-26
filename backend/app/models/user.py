@@ -43,6 +43,7 @@ class User(Base):
         "TicketEvent", back_populates="actor"
     )
     ratings: Mapped[list["Rating"]] = relationship("Rating", back_populates="rated_by_user")
+    ticket_votes: Mapped[list["TicketVote"]] = relationship("TicketVote", back_populates="user")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} email={self.email!r} role={self.role}>"

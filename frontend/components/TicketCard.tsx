@@ -160,7 +160,24 @@ function formatRelativeTime(dateStr: string) {
   }
 }
 
-function renderDescription(desc: string) {
+function formatEventDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function renderDescription(desc: string, isInstitution = false) {
   if (!desc) return null
   const hasVoiceNote = desc.includes('[Voice Note')
   if (hasVoiceNote) {
@@ -184,7 +201,7 @@ function renderDescription(desc: string) {
 
     return (
       <div className="mt-3 space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-orange-700">
+        <div className={`flex items-center gap-1.5 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-orange-700`}>
           <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
@@ -192,8 +209,8 @@ function renderDescription(desc: string) {
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {uniqueNotes.slice(0, 2).map((n, idx) => (
-            <div key={idx} className="bg-orange-50/60 border border-orange-200/80 rounded-xl p-3 text-xs shadow-sm">
-              <span className="text-[10px] font-bold text-orange-800 uppercase tracking-wider block mb-1">
+            <div key={idx} className={`bg-orange-50/60 border border-orange-200/80 rounded-xl p-3 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} shadow-sm`}>
+              <span className={`${isInstitution ? 'text-xs' : 'text-[10px]'} font-bold text-orange-800 uppercase tracking-wider block mb-1`}>
                 {n.lang}
               </span>
               <p className="text-slate-800 leading-relaxed line-clamp-3 font-medium">{n.text}</p>
@@ -205,13 +222,14 @@ function renderDescription(desc: string) {
   }
 
   return (
-    <p className="text-xs sm:text-sm text-slate-700 mt-2 line-clamp-3 leading-relaxed font-normal">
+    <p className={isInstitution ? "text-sm sm:text-base text-slate-700 mt-2 line-clamp-3 leading-relaxed font-normal" : "text-xs sm:text-sm text-slate-700 mt-2 line-clamp-3 leading-relaxed font-normal"}>
       {desc}
     </p>
   )
 }
 
-export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
+export function TicketCard({ ticket, actionsSlot, viewMode }: TicketCardProps) {
+  const isInstitution = viewMode === 'institution'
   const statusCfg = STATUS_MAP[ticket.status] ?? STATUS_MAP.pending_validation
   const priority = getPriorityDetails(ticket.severity_score)
   const isCompleted = ['verified', 'closed'].includes(ticket.status)
@@ -243,30 +261,30 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug tracking-tight">
+              <h3 className={isInstitution ? "text-lg sm:text-xl font-extrabold text-slate-900 leading-snug" : "text-base sm:text-lg font-bold text-slate-900 leading-snug tracking-tight"}>
                 {ticket.title}
               </h3>
-              <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-300">
+              <span className={isInstitution ? "text-xs sm:text-sm font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300" : "text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300"}>
                 #{ticket.id}
               </span>
             </div>
-            {renderDescription(ticket.description)}
+            {renderDescription(ticket.description, isInstitution)}
           </div>
 
           {/* Status Badge */}
           <div className="flex sm:flex-col items-center sm:items-end gap-1.5 shrink-0">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${statusCfg.pillClass}`}>
+            <span className={`inline-flex items-center gap-1.5 ${isInstitution ? 'px-3.5 py-1.5 text-xs sm:text-sm' : 'px-3 py-1 text-xs'} font-bold border shadow-sm rounded-full ${statusCfg.pillClass}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-current" />
               <span>{statusCfg.label}</span>
             </span>
-            <span className="text-xs text-slate-500 font-medium">
+            <span suppressHydrationWarning className={isInstitution ? "text-xs sm:text-sm text-slate-500 font-medium" : "text-xs text-slate-500 font-medium"}>
               Reported {formatRelativeTime(ticket.created_at)}
             </span>
           </div>
         </div>
 
         {/* User Status Explanatory Note */}
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center gap-2">
+        <div className={`p-3 rounded-xl bg-slate-50 border border-slate-200 ${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} text-slate-700 flex items-center gap-2`}>
           <span className="text-orange-600 font-bold">ℹ</span>
           <span>{statusCfg.userMessage}</span>
         </div>
@@ -275,7 +293,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
         <div className="flex items-center gap-2 flex-wrap pt-0.5">
           {/* Domain tag */}
           {ticket.domain && (
-            <span className="text-xs font-semibold bg-orange-50 text-orange-800 border border-orange-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm capitalize">
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-orange-50 text-orange-800 border border-orange-200 rounded-full flex items-center gap-1.5 shadow-sm capitalize`}>
               <span>🏷️</span>
               <span>{ticket.domain.replace(/_/g, ' ')}</span>
             </span>
@@ -283,7 +301,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
 
           {/* Assigned Institution */}
           {ticket.assigned_institution_name && (
-            <span className="text-xs font-semibold bg-blue-50 text-blue-900 border border-blue-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-blue-50 text-blue-900 border border-blue-200 rounded-full flex items-center gap-1.5 shadow-sm`}>
               <span>🏛️</span>
               <span>{ticket.assigned_institution_name}</span>
             </span>
@@ -291,7 +309,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
 
           {/* Priority indicator */}
           {priority && (
-            <span className={`text-xs font-semibold px-3 py-1 rounded-lg border flex items-center gap-2 shadow-sm ${priority.badge}`}>
+            <span className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold rounded-full border flex items-center gap-2 shadow-sm ${priority.badge}`}>
               <span>{priority.label}</span>
               <span className="inline-block w-12 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                 <span
@@ -304,13 +322,13 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
 
           {/* SLA Badge */}
           {slaRemainingText && (
-            <span className={`text-xs font-semibold px-3 py-1 rounded-lg border flex items-center gap-1.5 shadow-sm ${
+            <span suppressHydrationWarning className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold rounded-full border flex items-center gap-1.5 shadow-sm ${
               isSlaBreached
                 ? 'bg-red-50 text-red-800 border-red-300'
                 : 'bg-amber-50 text-amber-900 border-amber-300'
             }`}>
               <span>⏱</span>
-              <span>{slaRemainingText}</span>
+              <span suppressHydrationWarning>{slaRemainingText}</span>
             </span>
           )}
 
@@ -318,7 +336,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
           {ticket.contact_phone && (
             <a
               href={`tel:${ticket.contact_phone}`}
-              className="text-xs font-semibold bg-green-50 text-green-800 border border-green-300 px-3 py-1 rounded-lg flex items-center gap-1.5 hover:bg-green-100 transition-colors shadow-sm"
+              className={`${isInstitution ? 'text-xs sm:text-sm px-3.5 py-1.5' : 'text-xs px-3 py-1'} font-semibold bg-green-50 text-green-800 border border-green-300 rounded-full flex items-center gap-1.5 hover:bg-green-100 transition-colors shadow-sm`}
             >
               <span>📞</span>
               <span>{ticket.contact_phone}</span>
@@ -372,32 +390,129 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
           </div>
         </div>
 
-        {/* Photos Attached by Citizen */}
-        {ticket.media_urls && ticket.media_urls.length > 0 && (
-          <div className="pt-1">
-            <p className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
-              <span>📷</span>
-              <span>Citizen Evidence Photos ({ticket.media_urls.length})</span>
-            </p>
-            <div className="flex flex-wrap gap-2.5">
-              {ticket.media_urls.map((url, idx) => {
-                const fullUrl = `http://localhost:8000/${url.replace(/^\//, '')}`
-                return (
-                  <a
-                    key={idx}
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-800 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl hover:bg-orange-100 transition-colors shadow-sm"
-                  >
-                    <span>Photo {idx + 1}</span>
-                    <span>↗</span>
-                  </a>
-                )
-              })}
+        {/* Media Attached by Citizen (Voice Notes & Photos distinguished) */}
+        {ticket.media_urls && ticket.media_urls.length > 0 && (() => {
+          const isAudio = (u: string) => {
+            const l = u.toLowerCase()
+            return l.endsWith('.webm') || l.endsWith('.wav') || l.endsWith('.mp3') || l.endsWith('.ogg') || l.endsWith('.m4a') || l.includes('recording') || l.includes('audio') || l.includes('voice')
+          }
+          const isImg = (u: string) => {
+            const l = u.toLowerCase()
+            return l.endsWith('.png') || l.endsWith('.jpg') || l.endsWith('.jpeg') || l.endsWith('.webp') || l.endsWith('.gif') || l.endsWith('.svg') || l.includes('.png') || l.includes('.jpg')
+          }
+          const getUrl = (u: string) => {
+            if (u.startsWith('http://') || u.startsWith('https://')) return u
+            const clean = u.replace(/^\/+/, '').replace(/^uploads\//, '')
+            return `/uploads/${clean}`
+          }
+
+          const voiceNotes = ticket.media_urls.filter(isAudio)
+          const photos = ticket.media_urls.filter(u => isImg(u) && !isAudio(u))
+          const others = ticket.media_urls.filter(u => !isAudio(u) && !isImg(u))
+
+          return (
+            <div className="pt-1 space-y-3">
+              {/* Voice Notes Section */}
+              {voiceNotes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-orange-900 flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span>Citizen Voice Note{voiceNotes.length > 1 ? 's' : ''} ({voiceNotes.length})</span>
+                  </p>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {voiceNotes.map((url, idx) => {
+                      const mediaSrc = getUrl(url)
+                      return (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50/90 via-white/80 to-amber-50/90 border border-orange-200/90 shadow-sm backdrop-blur-xl flex flex-col gap-2"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-orange-950">
+                              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                              <span>Audio Recording #{idx + 1}</span>
+                            </span>
+                            <a
+                              href={mediaSrc}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-semibold text-orange-600 hover:text-orange-800 hover:underline flex items-center gap-0.5"
+                            >
+                              <span>Open</span>
+                              <span>↗</span>
+                            </a>
+                          </div>
+                          <audio
+                            controls
+                            preload="metadata"
+                            src={mediaSrc}
+                            className="w-full h-8 rounded-lg accent-orange-600 focus:outline-none"
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Photos Evidence Section */}
+              {photos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>📷</span>
+                    <span>Attached Evidence Photo{photos.length > 1 ? 's' : ''} ({photos.length})</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {photos.map((url, idx) => {
+                      const mediaSrc = getUrl(url)
+                      return (
+                        <a
+                          key={idx}
+                          href={mediaSrc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center gap-2 text-xs font-semibold text-orange-900 bg-orange-50/80 border border-orange-200 px-3 py-1.5 rounded-xl hover:bg-orange-100 transition-all shadow-sm"
+                        >
+                          <img
+                            src={mediaSrc}
+                            alt={`Evidence ${idx + 1}`}
+                            className="w-5 h-5 object-cover rounded border border-orange-200"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none' }}
+                          />
+                          <span>Photo #{idx + 1}</span>
+                          <span className="text-[10px] text-orange-600">↗</span>
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Other Media / Documents */}
+              {others.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {others.map((url, idx) => {
+                    const mediaSrc = getUrl(url)
+                    return (
+                      <a
+                        key={idx}
+                        href={mediaSrc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        <span>📎 Document #{idx + 1}</span>
+                        <span>↗</span>
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* WORKERS & COMPLETION SHOWCASE (Post-completion) */}
         {showWorkersSection && (
@@ -425,11 +540,11 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
             {/* Completion Notes */}
             {ticket.completion_notes && (
               <div className="bg-white rounded-xl p-3.5 border border-green-200 shadow-sm">
-                <p className="text-xs font-bold text-green-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <p className={`${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-green-900 uppercase tracking-wider mb-1 flex items-center gap-1`}>
                   <span>📋</span>
                   <span>Work Completion Summary</span>
                 </p>
-                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal">
+                <p className={isInstitution ? "text-sm sm:text-base text-slate-800 leading-relaxed font-normal" : "text-xs sm:text-sm text-slate-800 leading-relaxed font-normal"}>
                   {ticket.completion_notes}
                 </p>
               </div>
@@ -438,7 +553,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
             {/* Workers Cards */}
             {hasWorkers && (
               <div className="space-y-2">
-                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <p className={`${isInstitution ? 'text-xs sm:text-sm' : 'text-xs'} font-bold text-slate-800 flex items-center gap-1.5`}>
                   <span>👷</span>
                   <span>Assigned Personnel ({ticket.worker_credits?.length})</span>
                 </p>
@@ -452,10 +567,10 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
                         {worker.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 truncate">
+                        <p className={`${isInstitution ? 'text-sm' : 'text-xs'} font-bold text-slate-900 truncate`}>
                           {worker.name}
                         </p>
-                        <p className="text-[11px] font-semibold text-green-800 truncate">
+                        <p className={`${isInstitution ? 'text-xs' : 'text-[11px]'} font-semibold text-green-800 truncate`}>
                           {worker.role}
                         </p>
                       </div>
@@ -475,7 +590,7 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
                 <div className="flex flex-wrap gap-2.5">
                   {ticket.proof_media_urls.map((url, i) => {
                     const isImage = url.endsWith('.jpeg') || url.endsWith('.jpg') || url.endsWith('.png') || url.endsWith('.webp')
-                    const fullUrl = `http://localhost:8000/${url.replace(/^\//, '')}`
+                    const fullUrl = url.startsWith('http') ? url : `/uploads/${url.replace(/^\/+/, '').replace(/^uploads\//, '')}`
                     return (
                       <a
                         key={i}
@@ -524,13 +639,8 @@ export function TicketCard({ ticket, actionsSlot }: TicketCardProps) {
                       <span className="font-bold text-slate-900 capitalize">
                         {String(event.type).replace(/_/g, ' ')}
                       </span>
-                      <span className="text-slate-500 text-[11px] ml-2">
-                        {new Date(event.time).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                      <span suppressHydrationWarning className="text-slate-500 text-[11px] ml-2">
+                        {formatEventDate(event.time)}
                       </span>
                     </div>
                     {event.notes && (
