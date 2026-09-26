@@ -39,6 +39,12 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Routers
+# Routers & Static Mounts
 # ---------------------------------------------------------------------------
+import os
+from fastapi.staticfiles import StaticFiles
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 app.include_router(api_router)

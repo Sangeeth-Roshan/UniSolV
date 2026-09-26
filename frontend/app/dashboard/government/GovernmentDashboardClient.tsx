@@ -13,6 +13,7 @@ interface Props {
   staleTickets: StaleTicket[]
   dispatchTicket: (id: number) => Promise<void>
   assignTicket: (id: number, instId: number) => Promise<void>
+  verifyTicket?: (id: number) => Promise<void>
   closeTicket: (id: number) => Promise<void>
 }
 
@@ -157,7 +158,7 @@ function Tab({ label, active, onClick, badge }: {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function GovernmentDashboardClient({
-  tickets, stats, workload, slaRisk, staleTickets, dispatchTicket, assignTicket, closeTicket
+  tickets, stats, workload, slaRisk, staleTickets, dispatchTicket, assignTicket, verifyTicket, closeTicket
 }: Props) {
   const [activeTab, setActiveTab] = useState<'overview' | 'tickets' | 'routing' | 'sla' | 'stale'>('overview')
   const [search, setSearch] = useState('')
@@ -660,7 +661,16 @@ export default function GovernmentDashboardClient({
                           </form>
                         </div>
                       )}
-                      
+
+                      {ticket.status === 'piloting' && verifyTicket && (
+                        <form action={async () => { await verifyTicket(ticket.id) }}>
+                          <button type="submit" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-emerald-500 transition-all border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Verify &amp; Approve Completion
+                          </button>
+                        </form>
+                      )}
+
                       {ticket.status !== 'closed' && (
                         <form action={async () => { await closeTicket(ticket.id) }}>
                           <button type="submit" className="inline-flex items-center gap-2 px-5 py-2 bg-slate-200/80 text-slate-900 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-600 transition-all border border-slate-500/40">

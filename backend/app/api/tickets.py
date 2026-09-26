@@ -201,7 +201,8 @@ async def get_tickets(
     """
     query = select(Ticket).options(
         selectinload(Ticket.events),
-        selectinload(Ticket.assigned_institution)
+        selectinload(Ticket.assigned_institution),
+        selectinload(Ticket.attributions),
     )
     if current_user.role == UserRole.citizen:
         query = query.where(Ticket.reporter_id == current_user.id)
@@ -232,6 +233,12 @@ async def get_tickets(
             return None
         return round((t.sla_deadline - now).total_seconds() / 3600, 1)
 
+    def _worker_credits(t: Ticket) -> list:
+        """Return worker_credits from the first attribution record, or empty list."""
+        if t.attributions:
+            return t.attributions[0].worker_credits or []
+        return []
+
     rows = []
     for t in tickets:
         inst = t.assigned_institution
@@ -260,6 +267,8 @@ async def get_tickets(
                 "domains_of_expertise": inst.domains_of_expertise or [],
             } if inst else None,
             "assigned_institution_id": t.assigned_institution_id,
+            "assigned_institution_name": inst.name if inst else None,
+            "worker_credits": _worker_credits(t),
             "proof_media_urls": getattr(t, "proof_media_urls", []),
             "completion_notes": getattr(t, "completion_notes", None),
             "events": [
@@ -658,7 +667,7 @@ async def accept_ticket_endpoint(
     # CRIT-3: FOR UPDATE lock
     result = await db.execute(select(Ticket).where(Ticket.id == ticket_id).with_for_update())
     ticket = result.scalar_one_or_none()
-    
+
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
